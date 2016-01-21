@@ -1,3 +1,6 @@
+#Add javacc binaries to the path
+PATH := $(PATH):../javacc-5.0/bin
+
 JJTREE=jjtree
 JAVACC=javacc
 JJDOC=jjdoc
