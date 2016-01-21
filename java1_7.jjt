@@ -52,7 +52,7 @@ options {
 
 PARSER_BEGIN(JavaParser1_7)
 
-package javaparser;
+package com.namal.reing;
 import java.io.*;
 import java.util.*;
 

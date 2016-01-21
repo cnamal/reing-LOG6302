@@ -1,4 +1,4 @@
-package javaparser;
+package com.namal.reing;
 
 public class ExampleVisitor extends AbstractVisitor
 {

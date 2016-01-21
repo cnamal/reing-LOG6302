@@ -6,11 +6,13 @@ JAVACC=javacc
 JJDOC=jjdoc
 JAVAC=javac
 GRAMMAR=java1_7
-OUTPUT=javaparser
+OUTPUT=com/namal/reing
 
 .PHONY: compile clean mrproper
 
 compile:
+	mkdir -p com
+	mkdir -p com/namal
 	mkdir -p $(OUTPUT)
 	$(JJTREE) $(GRAMMAR).jjt
 	$(JAVACC) $(GRAMMAR).jj
