@@ -23,6 +23,9 @@ compile:
 	mv *.class $(OUTPUT)
 	mv *.java $(OUTPUT)
 
+test: compile
+	java com.namal.reing.JavaParser1_7 @examples/filelist.txt
+
 clean:
 	rm -rf $(OUTPUT)
 
