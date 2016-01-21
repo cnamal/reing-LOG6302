@@ -18,6 +18,7 @@ compile:
 	$(JAVACC) $(GRAMMAR).jj
 	$(JJDOC) $(GRAMMAR).jj
 	cp -rf visitors/*.java .
+	cp -rf src/*.java .
 	$(JAVAC) *.java
 	mv $(GRAMMAR).jj $(OUTPUT)
 	mv *.class $(OUTPUT)

@@ -58,6 +58,16 @@ import java.util.*;
 
 public class JavaParser1_7 {
 
+	private static void parse(JavaParser1_7 parser,int id,String fileName){
+		try{
+		AbstractOutput absOutput = new JSONOutput().setId(id).setFileName(fileName);
+		ReingVisitor vis = new ReingVisitor();
+		parser.CompilationUnit().jjtAccept(vis, null);
+		vis.setData(absOutput);
+		absOutput.dumpData();
+		}catch(ParseException e) { e.printStackTrace(); }
+	}
+
    private static int parseFilesFromFileList(String fileName)
    {
       DataInputStream str = null;
@@ -71,19 +81,15 @@ public class JavaParser1_7 {
          {
             try
             {
-               cnt++;
                System.out.println("Parsing: " + s);
                JavaParser1_7 parser = new JavaParser1_7(s);
 
                // Dump syntax tree
                // SimpleNode n = parser.CompilationUnit();
                // n.dump(" ");
+				parse(parser,cnt++,s);
 
-		       ExampleVisitor vis = new ExampleVisitor();
-               parser.CompilationUnit().jjtAccept(vis, null);
-
-            }
-            catch(ParseException e) { e.printStackTrace(); }
+			               }
             catch(TokenMgrError tme) { tme.printStackTrace(); }
 	        catch(Exception e) {e.printStackTrace(); }
          }
@@ -125,19 +131,17 @@ public class JavaParser1_7 {
       System.out.println("         java JavaParser inputfile");
       return;
     }
-    try {
+
+	  parse(parser,0,fileName);
+	  /*
 	  ExampleVisitor vis = new ExampleVisitor();
-      parser.CompilationUnit().jjtAccept(vis, null);
+      parser.CompilationUnit().jjtAccept(vis, null);*/
 
       // Dump syntax tree
       // SimpleNode n = parser.CompilationUnit();
       // n.dump(" ");
 
       System.out.println("Java Parser Version 0.1:  Java program parsed successfully.");
-    } catch (ParseException e) {
-      System.out.println(e.getMessage());
-      System.out.println("Java Parser Version 0.1:  Encountered errors during parse.");
-    }
   }
 
 
