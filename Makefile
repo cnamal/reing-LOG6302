@@ -28,7 +28,7 @@ test: compile
 	java com.namal.reing.JavaParser1_7 @examples/filelist.txt
 
 clean:
-	rm -rf $(OUTPUT)
+	rm -rf com
 
 mrproper: clean
 	rm -rf *~ $(GRAMMAR).html
