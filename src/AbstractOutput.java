@@ -1,13 +1,13 @@
 package com.namal.reing;
+import java.util.*;
 
 public abstract class AbstractOutput{
 
 	protected long id;
-	protected long nbIf;
-	protected long nbElse;
 
 	protected String fileName;
 	protected String className;
+	protected List<Class> classes;
 
 
 	public AbstractOutput setId(long id){
@@ -25,15 +25,12 @@ public abstract class AbstractOutput{
 		return this;
 	}
 
-	public AbstractOutput setNbIf(long nbIf){
-		this.nbIf=nbIf;
-		return this;
-	}
-
-	public AbstractOutput setNbElse(long nbElse){
-		this.nbIf=nbElse;
+	public AbstractOutput setClasses(List<Class> classes){
+		this.classes=classes;
 		return this;
 	}
 
 	public abstract void dumpData();
+
+	public abstract IPrint getPrinter();
 }
