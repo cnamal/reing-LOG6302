@@ -1,2 +1,5 @@
 examples/HelloWorld.java
-examples/HelloWorld.java
+examples/HelloWorldComplicated.java
+examples/LOG6302_TP1_example.java
+examples/NestedClasses.java
+examples/ClassInMethod.java
