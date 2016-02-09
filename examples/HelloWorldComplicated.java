@@ -1,5 +1,7 @@
-public class HelloWorldComplicated {
+package test;
+public class HelloWorldComplicated extends int[]{
 
+    int[] test;
     public static void main(String[] args) {
         System.out.println("Hello, World");
     }
