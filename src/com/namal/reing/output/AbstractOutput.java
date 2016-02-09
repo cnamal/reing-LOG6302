@@ -1,14 +1,17 @@
-package com.namal.reing;
+package com.namal.reing.output;
 import java.util.*;
+import com.namal.reing.models.*;
 
 public abstract class AbstractOutput{
 
 	protected long id;
 
 	protected String fileName;
-	protected String className;
-	protected List<Class> classes;
+	protected List<MCIE> classes;
 
+	public AbstractOutput(){
+
+	}
 
 	public AbstractOutput setId(long id){
 		this.id=id;
@@ -19,13 +22,9 @@ public abstract class AbstractOutput{
 		this.fileName=fileName;
 		return this;
 	}
-	
-	public AbstractOutput setClassName(String className){
-		this.className=className;
-		return this;
-	}
 
-	public AbstractOutput setClasses(List<Class> classes){
+
+	public AbstractOutput setClasses(List<MCIE> classes){
 		this.classes=classes;
 		return this;
 	}

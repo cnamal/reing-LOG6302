@@ -20,3 +20,6 @@ hs_err_pid*
 
 #graphs
 graphs/
+
+#don't add jjtree generated files
+src/com/namal/reing/*.java

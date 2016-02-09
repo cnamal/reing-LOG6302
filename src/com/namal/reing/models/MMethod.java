@@ -1,8 +1,12 @@
-package com.namal.reing;
+package com.namal.reing.models;
 
-import java.util.*;
+import com.namal.reing.visitors.AbstractVisitor;
+import com.namal.reing.visitors.ReingVisitor;
 
-public class Method{
+import java.util.ArrayList;
+import java.util.List;
+
+public class MMethod{
 	private int nbVariable=0;
 	private int nbIf=0;
 	private int nbElse=0;
@@ -15,8 +19,11 @@ public class Method{
 	private int nbThrow=0;
 	private int nbSynchronized=0;
 	private int nbTry=0;
+    private MType ret;
+    private MModifier mod;
 	
-	private List<Class> classes= new ArrayList<>();
+	private List<MCIE> classes= new ArrayList<>();
+	private List<MField> params = new ArrayList<>();
 
 	private String methodName;
 
@@ -68,11 +75,19 @@ public class Method{
 		nbTry++;
 	}
 	
-	public void addClass(Class c){
+	public void addClass(MCIE c){
 		classes.add(c);
 	}
 
-	public Method(String methodName){
+    public void setRet(MType ret){
+        this.ret=ret;
+    }
+
+    public void setMod(MModifier mod){
+        this.mod=mod;
+    }
+
+	public MMethod(String methodName){
 		this.methodName=methodName;
 	}
 
@@ -124,15 +139,31 @@ public class Method{
 		return nbVariable;
 	}
 
+	public MType getRet(){
+		return ret;
+	}
+
+	public MModifier getMod(){
+		return mod;
+	}
+
 	public int getSynchronized(){
 		return nbSynchronized;
 	}
 
-	public List<Class> getClasses(){
+	public List<MCIE> getClasses(){
 		return classes;
 	}
 
+    public void addParam(MField f){
+        params.add(f);
+    }
+
+    public List<MField> getParams(){
+        return params;
+    }
+
 	public String toString(){
-		return ReingVisitor.getPrinter().print(this);
+		return AbstractVisitor.getPrinter().print(this);
 	}
 }
