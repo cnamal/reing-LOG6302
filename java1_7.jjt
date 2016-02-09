@@ -53,6 +53,9 @@ options {
 PARSER_BEGIN(JavaParser1_7)
 
 package com.namal.reing;
+import com.namal.reing.output.*;
+import com.namal.reing.visitors.*;
+import com.namal.reing.models.*;
 import java.io.*;
 import java.util.*;
 
@@ -60,12 +63,16 @@ public class JavaParser1_7 {
 
 	private static void parse(JavaParser1_7 parser,int id,String fileName){
 		try{
-		AbstractOutput absOutput = new JSONOutput().setId(id).setFileName(fileName);
-		ReingVisitor vis = new ReingVisitor();
+	//	AbstractOutput absOutput = (new JSONOutput()).setId(id).setFileName(fileName);
+	//	ReingVisitor vis = new ReingVisitor();
+
+        AbstractOutput absOutput = (new DotOutput("graphs")).setId(id).setFileName(fileName);
+		UMLVisitor vis = new UMLVisitor();
 		parser.CompilationUnit().jjtAccept(vis, null);
-		vis.setData(absOutput);
-		absOutput.dumpData();
+		vis.dumpData(absOutput);
+
 		}catch(ParseException e) { e.printStackTrace(); }
+
 	}
 
    private static int parseFilesFromFileList(String fileName)
@@ -137,9 +144,13 @@ public class JavaParser1_7 {
 	  ExampleVisitor vis = new ExampleVisitor();
       parser.CompilationUnit().jjtAccept(vis, null);*/
 
+	  /*
+	  try{
       // Dump syntax tree
-      // SimpleNode n = parser.CompilationUnit();
-      // n.dump(" ");
+       SimpleNode n = parser.CompilationUnit();
+       n.dump(" ");
+	   }catch(Exception e){}
+	   */
 
       System.out.println("Java Parser Version 0.1:  Java program parsed successfully.");
   }
@@ -579,13 +590,21 @@ CompilationUnit CompilationUnit():
 }
 {
 	// LOOKAHEAD required because Annotation can also be part of class modifiers
-	[ LOOKAHEAD([Annotations()] <PACKAGE>) [Annotations()] <PACKAGE> QualifiedIdentifier() <SEMICOLON> ]
+	//[ LOOKAHEAD([Annotations()] <PACKAGE>) [Annotations()] <PACKAGE> QualifiedIdentifier() <SEMICOLON> ]
+        [Package()]
 		( ImportDeclaration() )*
 		( TypeDeclaration() )*
 
 	<EOF>
 
 	{return jjtThis;}
+}
+
+void Package():
+{
+}
+{
+    [Annotations()]  <PACKAGE> QualifiedIdentifier() <SEMICOLON> 
 }
 
 void ImportDeclaration():
@@ -647,21 +666,42 @@ void NormalClassDeclaration():
 {
 }
 {
-	<CLASS> Identifier() [TypeParameters()] [<EXTENDS> Type()] [<IMPLEMENTS> TypeList()] ClassBody()
+	<CLASS> Identifier() [TypeParameters()] ExtendOne() Implement() ClassBody()
+}
+
+void ExtendOne():
+{
+}
+{
+    [<EXTENDS> Type()]
+}
+
+void ExtendMultiple():
+{
+}
+{
+    [<EXTENDS> TypeList()]
+}
+
+void Implement():
+{
+}
+{
+    [<IMPLEMENTS> TypeList()]
 }
 
 void EnumDeclaration():
 {
 }
 {
-	<ENUM> Identifier() [<IMPLEMENTS> TypeList()] EnumBody()
+	<ENUM> Identifier() Implement() EnumBody()
 }
 
 void NormalInterfaceDeclaration():
 {
 }
 {
-	<INTERFACE> Identifier() [TypeParameters()] [<EXTENDS> TypeList()] InterfaceBody()
+	<INTERFACE> Identifier() [TypeParameters()] ExtendMultiple() InterfaceBody()
 }
 
 void AnnotationTypeDeclaration():
@@ -675,9 +715,16 @@ void Type():
 {
 }
 {
-	( BasicType() ( <LBRACKET> <RBRACKET> )* )
+	( BasicType() ( Brackets() )* )
 	|
-	( ReferenceType() ( <LBRACKET> <RBRACKET> )* )
+	( ReferenceType() ( Brackets() )* )
+}
+
+void Brackets():
+{
+}
+{
+    <LBRACKET> <RBRACKET>
 }
 
 void BasicType():
@@ -928,7 +975,7 @@ void GenericMethodOrConstructorRest():
 {
 }
 {
-	( (Type() | <VOID>) Identifier() MethodDeclaratorRest() )
+	( (Type() | <VOID>)#GenericType Identifier() MethodDeclaratorRest() )
 	|
 	( Identifier() ConstructorDeclaratorRest() )
 }
@@ -1051,14 +1098,14 @@ void FormalParameterDeclsRest():
 {
 	( VariableDeclaratorId() [<COMA> FormalParameterDecls()] )
 	|
-	( <ELLIPSIS> VariableDeclaratorId() )
+	( <ELLIPSIS> VariableDeclaratorId() )#EllipsisParam
 }
 
 void VariableDeclaratorId():
 {
 }
 {
-	Identifier() (<LBRACKET> <RBRACKET>)*
+	Identifier() (Brackets())*
 }
 
 
