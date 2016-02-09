@@ -1,6 +1,6 @@
 #Generated files
 java1_7.html
-com/
+target/
 *.class
 
 # Mobile Tools for Java (J2ME)
