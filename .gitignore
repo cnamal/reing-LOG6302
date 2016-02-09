@@ -23,3 +23,4 @@ graphs/
 
 #don't add jjtree generated files
 src/com/namal/reing/*.java
+*.jj
