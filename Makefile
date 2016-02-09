@@ -44,7 +44,7 @@ test: compile
 	java -cp target com.namal.reing.JavaParser1_7 @examples/filelist.txt
 
 project: compile
-	java -cp target com.namal.reing.JavaParser1_7 @projects/cloc.txt
+	java -cp target com.namal.reing.JavaParser1_7 @projects/zest-java.txt
 
 clean:
 	rm -rf com *.java *.class

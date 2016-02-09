@@ -24,3 +24,6 @@ graphs/
 #don't add jjtree generated files
 src/com/namal/reing/*.java
 *.jj
+
+#projects for testing
+projects/zest-java
