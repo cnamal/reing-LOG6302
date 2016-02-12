@@ -65,12 +65,16 @@ public class DotOutput extends AbstractOutput implements IPrint {
                 writer.print(" : ");
                 writer.print(f.getType().getName() + "\\l");
             }
-
+            writer.print("|");
             for (MMethod m : cie.getMethods()) {
                 printAN(m.getMod().getAccessibility(), m.getName(), writer);
                 writer.print("(");
-                for (MField t : m.getParams())
-                    writer.print(t.getType().getName() + ",");
+                if(m.getParams().size()>0){
+                    writer.print(m.getParams().get(0).getType().getName() );
+                }
+                for (int i=1;i<m.getParams().size();i++)
+                    writer.print("," + m.getParams().get(i).getType().getName() );
+
                 writer.print(") :");
                 writer.print((m.getRet() != null ? m.getRet().getName() : "") + "\\l");
             }
@@ -81,22 +85,43 @@ public class DotOutput extends AbstractOutput implements IPrint {
         return null;
     }
 
+    private void extendInit(PrintWriter writer){
+        writer.println("edge[");
+        writer.println("arrowhead = \"empty\"");
+        writer.println("]");
+    }
+
+    private void fieldInit(PrintWriter writer){
+        writer.println("edge[");
+        writer.println("arrowhead = \"diamond\"");
+        writer.println("]");
+    }
+
     @Override
     public void dumpData() {
         for (MClass cie : classes) {
 
             PrintWriter writer = initCIE(cie);
             if(writer!=null) {
-            //extends
-            if (!cie.getExtend().getFullName().equals("")) {
-                writer.println("edge[");
-                writer.println("arrowhead = \"empty\"");
-                writer.println("]");
-                writer.println("\"" + cie.getFullName() + "\" -> \"" + cie.getExtend().getFullName() + "\"");
-            }
+                //extends
+                if (!cie.getExtend().getFullName().equals("")) {
+                    extendInit(writer);
+                    writer.println("\"" + cie.getFullName() + "\" -> \"" + cie.getExtend().getFullName() + "\"");
+                }
 
-            writer.println("}");
-            writer.close();
+                //fields
+                if(cie.getFields().size()>0){
+                    fieldInit(writer);
+                }
+
+                for (MField f: cie.getFields()){
+                    if(!f.getType().isBasic()){
+                        writer.println("\"" + cie.getFullName() + "\" -> \"" + f.getType().getFullName() + "\"");
+                    }
+                }
+
+                writer.println("}");
+                writer.close();
             }
         }
 
@@ -105,11 +130,12 @@ public class DotOutput extends AbstractOutput implements IPrint {
             PrintWriter writer = initCIE(inter);
             if(writer!=null) {
                 //extends
+                if(inter.getExtend().size()>0){
+                    extendInit(writer);
+                }
                 for(MType type: inter.getExtend()) {
                     if (!type.getFullName().equals("")) {
-                        writer.println("edge[");
-                        writer.println("arrowhead = \"empty\"");
-                        writer.println("]");
+
                         writer.println("\"" + inter.getFullName() + "\" -> \"" + type.getFullName() + "\"");
                     }
                 }
