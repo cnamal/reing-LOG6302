@@ -4,3 +4,4 @@ examples/LOG6302_TP1_example.java
 examples/NestedClasses.java
 examples/ClassInMethod.java
 examples/Interface.java
+examples/Access.java
