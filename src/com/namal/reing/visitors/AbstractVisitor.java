@@ -250,6 +250,10 @@ public abstract class AbstractVisitor implements JavaParser1_7Visitor
         propagate(node, data);
         return data;
     }
+    public Object visit(VoidInterfaceMethodDecl node, Object data){
+        propagate(node, data);
+        return data;
+    }
     public Object visit(ConstructorDecl node, Object data){
         propagate(node, data);
         return data;

@@ -1002,7 +1002,7 @@ void InterfaceMemberDecl():
 {
 	InterfaceMethodOrFieldDecl()
 	|
-	( <VOID> Identifier() VoidInterfaceMethodDeclaratorRest() )
+	( <VOID> Identifier() VoidInterfaceMethodDeclaratorRest() )#VoidInterfaceMethodDecl()
 	|
 	InterfaceGenericMethodDecl()
 	|
@@ -1066,7 +1066,7 @@ void InterfaceGenericMethodDecl():
 {
 }
 {
-	TypeParameters() ( Type() | <VOID> ) Identifier() InterfaceMethodDeclaratorRest()
+	TypeParameters() ( Type() | <VOID> )#GenericType Identifier() InterfaceMethodDeclaratorRest()
 }
 
 void FormalParameters():

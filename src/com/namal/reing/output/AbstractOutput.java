@@ -7,7 +7,8 @@ public abstract class AbstractOutput{
 	protected long id;
 
 	protected String fileName;
-	protected List<MCIE> classes;
+	protected List<MClass> classes;
+	protected List<MInterface> interfaces;
 
 	public AbstractOutput(){
 
@@ -24,8 +25,13 @@ public abstract class AbstractOutput{
 	}
 
 
-	public AbstractOutput setClasses(List<MCIE> classes){
+	public AbstractOutput setClasses(List<MClass> classes){
 		this.classes=classes;
+		return this;
+	}
+
+	public AbstractOutput setInterfaces(List<MInterface> interfaces){
+		this.interfaces=interfaces;
 		return this;
 	}
 
