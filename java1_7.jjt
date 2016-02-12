@@ -61,6 +61,15 @@ import java.util.*;
 
 public class JavaParser1_7 {
 
+    private static class Tuple<AbstractOutput, UMLVisitor> {
+      public final AbstractOutput out;
+      public final UMLVisitor uml;
+      public Tuple(AbstractOutput x, UMLVisitor y) {
+        this.out = x;
+        this.uml = y;
+      }
+    }
+
 	private static void parse(JavaParser1_7 parser,int id,String fileName){
 		try{
 	//	AbstractOutput absOutput = (new JSONOutput()).setId(id).setFileName(fileName);
@@ -75,6 +84,18 @@ public class JavaParser1_7 {
 
 	}
 
+	private static Tuple<AbstractOutput, UMLVisitor> parseUML(JavaParser1_7 parser,int id,String fileName){
+    		try{
+
+            AbstractOutput absOutput = (new DotOutput("graphs")).setId(id).setFileName(fileName);
+    		UMLVisitor vis = new UMLVisitor();
+    		parser.CompilationUnit().jjtAccept(vis, null);
+    		return new Tuple(absOutput,vis);
+
+    		}catch(ParseException e) { e.printStackTrace(); }
+            return null;
+    	}
+
    private static int parseFilesFromFileList(String fileName)
    {
       DataInputStream str = null;
@@ -83,7 +104,7 @@ public class JavaParser1_7 {
       {
          str = new DataInputStream(new FileInputStream(new File(fileName)));
          String s;
-
+         List<Tuple<AbstractOutput, UMLVisitor>> list = new ArrayList();
          while ((s = str.readLine()) != null)
          {
             try
@@ -94,11 +115,14 @@ public class JavaParser1_7 {
                // Dump syntax tree
                // SimpleNode n = parser.CompilationUnit();
                // n.dump(" ");
-				parse(parser,cnt++,s);
+				list.add(parseUML(parser,cnt++,s));
 
 			               }
             catch(TokenMgrError tme) { tme.printStackTrace(); }
 	        catch(Exception e) {e.printStackTrace(); }
+         }
+         for(Tuple<AbstractOutput, UMLVisitor> t:list){
+            t.uml.dumpData(t.out);
          }
       }
       catch(Exception e) { e.printStackTrace(); }
