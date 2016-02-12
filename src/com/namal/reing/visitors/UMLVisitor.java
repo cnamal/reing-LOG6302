@@ -11,9 +11,10 @@ public class UMLVisitor extends AbstractVisitor
 {
 
 
-    private MCIE currentClass;
+    private MCIE currentCIE;
     private Stack<MClass> stackClasses=new Stack<>();
-    private List<MCIE> classes=new ArrayList<>();
+    private List<MClass> classes=new ArrayList<>();
+    private List<MInterface> interfaces = new ArrayList<>();
     private MMethod currentMethod;
     private Stack<MMethod> stackMethods=new Stack<>();
     private static final String PACKAGE = "package";
@@ -21,7 +22,8 @@ public class UMLVisitor extends AbstractVisitor
     private String pack="";
     private List<String> imports=new ArrayList<>();
     private static HashMap<String,MType> unfoundClasses = new HashMap<>();
-    private static HashSet<String> allClasses = new HashSet<>();
+    private static HashSet<String> allCIE = new HashSet<>();
+    private boolean inCIE =false;
 
     public Object visit(ClassBodyDeclaration node, Object data){
         if(node.jjtGetNumChildren()>0){
@@ -131,30 +133,23 @@ public class UMLVisitor extends AbstractVisitor
         return l;
     }
 
-    private boolean initCIE(SimpleNode node,Object data,boolean isInterface){
-        if(currentClass!=null){
+    private boolean initCIE(SimpleNode node,Object data){
+        /*if(currentCIE!=null){
             return false;
-        }
-        if(isInterface)
-            currentClass=new MInterface();
-        else
-            currentClass=new MClass();
-        currentClass.setName(((Identifier)node.jjtGetChild(0)).jjtGetFirstToken().image);
-        currentClass.setPackage(pack);
+        }*/
+        inCIE=true;
+        currentCIE.setName(((Identifier)node.jjtGetChild(0)).jjtGetFirstToken().image);
+        currentCIE.setPackage(pack);
         String tmp = pack.equals("")?"":pack+".";
-        tmp+=currentClass.getName();
+        tmp+=currentCIE.getName();
         MType type=unfoundClasses.get(tmp);
         if(type!=null)
             type.setFullName(tmp);
-        allClasses.add(tmp);
+        allCIE.add(tmp);
         propagate(node,data);
         return true;
     }
 
-    private void endCIE(){
-        classes.add(currentClass);
-        currentClass=null;
-    }
 
     private String inImport(String name){
         if(name.lastIndexOf(".")>=0)//needs to be tested
@@ -174,12 +169,16 @@ public class UMLVisitor extends AbstractVisitor
     }
 
     public Object visit(NormalInterfaceDeclaration node,Object data){
-        if(initCIE(node,data,true)){
-            List<MType> l = (List)node.jjtGetChild(node.jjtGetNumChildren()-2).jjtAccept(this,data);
-            for(int i=0;i<l.size();i++)
-                ((MInterface)currentClass).addExtend(processType(l.get(i)));
-            endCIE();
-        }
+        if(inCIE)
+            return data;
+        MInterface tmp=new MInterface();
+        currentCIE=tmp;
+        initCIE(node,data);
+        List<MType> l = (List)node.jjtGetChild(node.jjtGetNumChildren()-2).jjtAccept(this,data);
+        for(int i=0;i<l.size();i++)
+            tmp.addExtend(processType(l.get(i)));
+        interfaces.add(tmp);
+        inCIE=false;
         return data;
     }
 
@@ -195,7 +194,7 @@ public class UMLVisitor extends AbstractVisitor
                 if(pack!=null)
                     unfound = pack+".";
                 unfound+=t.getName();
-                if(allClasses.contains(unfound))
+                if(allCIE.contains(unfound))
                     t.setFullName(unfound);
                 else{
                     MType tmp=unfoundClasses.get(unfound);
@@ -210,32 +209,40 @@ public class UMLVisitor extends AbstractVisitor
     }
 
     public Object visit(NormalClassDeclaration node, Object data){
-        if(initCIE(node,data,false)){
-            MType t = (MType)node.jjtGetChild(node.jjtGetNumChildren()-3).jjtAccept(this,data);
-            t=processType(t);
-            ((MClass)currentClass).setExtend(t);
-            List<MType> l = (List)node.jjtGetChild(node.jjtGetNumChildren()-2).jjtAccept(this,data);
-            for(int i=0;i<l.size();i++)
-                ((MClass)currentClass).addImplement(processType(l.get(i)));
-            endCIE();
-        }
+        if(inCIE)
+            return data;
+        MClass tmp= new MClass();
+        currentCIE=tmp;
+        initCIE(node,data);
+        MType t = (MType)node.jjtGetChild(node.jjtGetNumChildren()-3).jjtAccept(this,data);
+        t=processType(t);
+        tmp.setExtend(t);
+        List<MType> l = (List)node.jjtGetChild(node.jjtGetNumChildren()-2).jjtAccept(this,data);
+        for(int i=0;i<l.size();i++)
+            tmp.addImplement(processType(l.get(i)));
+        classes.add(tmp);
+        inCIE=false;
         return data;
     }
 
     public Object visit(EnumDeclaration node, Object data){
-        if(initCIE(node,data,false)){
-            ((MClass)currentClass).setExtend(new MType("",true));
-            List<MType> l = (List)node.jjtGetChild(node.jjtGetNumChildren()-2).jjtAccept(this,data);
-            for(int i=0;i<l.size();i++)
-                ((MClass)currentClass).addImplement(processType(l.get(i)));
-            endCIE();
-        }
+        if(inCIE)
+            return data;
+        MClass tmp=new MClass();
+        currentCIE=tmp;
+        initCIE(node,data);
+        tmp.setExtend(new MType("",true));
+        List<MType> l = (List)node.jjtGetChild(node.jjtGetNumChildren()-2).jjtAccept(this,data);
+        for(int i=0;i<l.size();i++)
+            tmp.addImplement(processType(l.get(i)));
+        classes.add(tmp);
+        inCIE=false;
         return data;
     }
 
-    public Object visit(MethodOrFieldDecl node,Object data){
+    private Object methodOrField(Node node,Object data){
         if(!(data instanceof MModifier))
-            throw new RuntimeException("The data was supposed to be a List<Object>");
+            throw new RuntimeException("The data was supposed to be a MModifier");
         MModifier mod = (MModifier)data;
         List<Object> l = new ArrayList<>();
         l.add(mod);
@@ -245,6 +252,14 @@ public class UMLVisitor extends AbstractVisitor
         l.add(((Identifier)node.jjtGetChild(1)).jjtGetFirstToken().image);
         propagate(node,l);
         return data;
+    }
+
+    public Object visit(MethodOrFieldDecl node,Object data){
+        return methodOrField(node,data);
+    }
+
+    public Object visit(InterfaceMethodOrFieldDecl node,Object data){
+        return methodOrField(node,data);
     }
 
     public Object visit(GenericType node,Object data){
@@ -261,24 +276,35 @@ public class UMLVisitor extends AbstractVisitor
         currentMethod=new MMethod((String)l.get(1));
         currentMethod.setMod((MModifier) l.get(0));
         propagate(node,data);
-        currentClass.addMethod(currentMethod);
+        currentCIE.addMethod(currentMethod);
         currentMethod=null;
         return data;
     }
 
-    public Object visit(MethodDeclaratorRest node, Object data){
+    public Object visit (Creator node,Object data){
+        return data;
+    }
+
+    private Object method(Node node, Object data){
         if(!(data instanceof List<?>))
             throw new RuntimeException("The data was supposed to be a List<Object>");
         List<Object> l = (List)data;
         currentMethod=new MMethod((String)l.get(2));
         currentMethod.setRet((MType)l.get(1));
         currentMethod.setMod((MModifier) l.get(0));
-        propagate(node,data);
-        currentClass.addMethod(currentMethod);
+        //propagate(node,data);
+        currentCIE.addMethod(currentMethod);
         currentMethod=null;
         return data;
     }
 
+    public Object visit(MethodDeclaratorRest node, Object data){
+        return method(node,data);
+    }
+
+    public Object visit(InterfaceMethodDeclaratorRest node, Object data){
+        return method(node,data);
+    }
 
     public Object visit(VariableDeclaratorId node,Object data){
         String s=((Identifier)node.jjtGetChild(0)).jjtGetFirstToken().image;
@@ -295,22 +321,35 @@ public class UMLVisitor extends AbstractVisitor
         MField f = new MField((String)l.get(2));
         f.setType((MType)l.get(1));
         f.setMod((MModifier)l.get(0));
-        currentClass.addField(f);
+        currentCIE.addField(f);
         //propagate(node,data);
         return data;
     }
 
 
-    public Object visit(VoidMethodDecl node,Object data){
+    private Object voidMethod(Node node,Object data){
         if(!(data instanceof MModifier))
-            throw new RuntimeException("The data was supposed to be a List<Object>");
+            throw new RuntimeException("The data was supposed to be a MModifier");
         currentMethod=new MMethod(((Identifier)node.jjtGetChild(0)).jjtGetFirstToken().image);
         currentMethod.setRet(new MType("void",true));
         currentMethod.setMod((MModifier) data);
         propagate(node,data);
-        currentClass.addMethod(currentMethod);
+        currentCIE.addMethod(currentMethod);
         currentMethod=null;
         return data;
+    }
+
+    public Object visit(VoidMethodDecl node,Object data){
+        return voidMethod(node,data);
+    }
+
+    public Object visit(VoidInterfaceMethodDecl node,Object data){
+        return voidMethod(node,data);
+    }
+
+    public Object visit(NonEmptyInterfaceDeclaration node, Object data){
+        MModifier l = (MModifier) node.jjtGetChild(0).jjtAccept(this,data);
+        return node.jjtGetChild(1).jjtAccept(this,l);
     }
 
     public Object visit(ConstructorDecl node,Object data){
@@ -339,15 +378,19 @@ public class UMLVisitor extends AbstractVisitor
         return data;
     }
 
-    public Object visit(GenericMethodOrConstructorRest node,Object data){
-        Identifier id = node.jjtGetNumChildren()==2?((Identifier)node.jjtGetChild(0)):((Identifier)node.jjtGetChild(1));
+    public Object visit(EllipsisParam node,Object data){
+        return node.jjtGetChild(0).jjtAccept(this,data);
+    }
+
+    private Object genericMethodOrConstr(Node node,Object data){
+        Identifier id = (Identifier)node.jjtGetChild(node.jjtGetNumChildren()-2);
         if(!(data instanceof MModifier))
             throw new RuntimeException("The data was supposed to be a List<Object>");
         MModifier mod = (MModifier) data;
         List<Object> l = new ArrayList<>();
         l.add(mod);
-        if(node.jjtGetNumChildren()==3){
-            MType t = (MType)node.jjtGetChild(0).jjtAccept(this,data);
+        if(node.jjtGetNumChildren()>2){
+            MType t = (MType)node.jjtGetChild(node.jjtGetNumChildren()-3).jjtAccept(this,data);
             t=processType(t);
             l.add(t);
         }
@@ -356,8 +399,16 @@ public class UMLVisitor extends AbstractVisitor
         return data;
     }
 
+    public Object visit(GenericMethodOrConstructorRest node,Object data){
+        return genericMethodOrConstr(node,data);
+    }
+
+    public Object visit(InterfaceGenericMethodDecl node,Object data){
+        return genericMethodOrConstr(node,data);
+    }
+
     public void dumpData(AbstractOutput absOutput){
-        absOutput.setClasses(classes);
+        absOutput.setClasses(classes).setInterfaces(interfaces);
         ip=absOutput.getPrinter();
         absOutput.dumpData();
     }
