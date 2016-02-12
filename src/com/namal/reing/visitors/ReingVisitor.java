@@ -9,9 +9,9 @@ public class ReingVisitor extends AbstractVisitor
 
     private int nbElse=0;
 
-    private MCIE currentClass;
-    private Stack<MCIE> stackClasses=new Stack<>();
-    private List<MCIE> classes=new ArrayList<>();
+    private MClass currentClass;
+    private Stack<MClass> stackClasses=new Stack<>();
+    private List<MClass> classes=new ArrayList<>();
     private MMethod currentMethod;
     private Stack<MMethod> stackMethods=new Stack<>();
     
