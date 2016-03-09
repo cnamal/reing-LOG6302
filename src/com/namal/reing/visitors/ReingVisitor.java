@@ -155,7 +155,6 @@ public class ReingVisitor extends AbstractVisitor
         currentClass.addMethod(currentMethod);
         currentMethod=null;
         return data;
-
     }
 
     public Object visit(StaticInitBlock node, Object data){

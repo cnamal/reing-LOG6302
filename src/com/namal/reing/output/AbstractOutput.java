@@ -9,6 +9,7 @@ public abstract class AbstractOutput{
 	protected String fileName;
 	protected List<MClass> classes;
 	protected List<MInterface> interfaces;
+	protected List<MNode> nodes;
 
 	public AbstractOutput(){
 
@@ -32,6 +33,11 @@ public abstract class AbstractOutput{
 
 	public AbstractOutput setInterfaces(List<MInterface> interfaces){
 		this.interfaces=interfaces;
+		return this;
+	}
+
+	public AbstractOutput setGraphs(List<MNode> nodes){
+		this.nodes=nodes;
 		return this;
 	}
 

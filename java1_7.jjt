@@ -61,6 +61,8 @@ import java.util.*;
 
 public class JavaParser1_7 {
 
+    private static final boolean UML = false;
+
     private static class Tuple<AbstractOutput, UMLVisitor> {
       public final AbstractOutput out;
       public final UMLVisitor uml;
@@ -75,8 +77,11 @@ public class JavaParser1_7 {
 	//	AbstractOutput absOutput = (new JSONOutput()).setId(id).setFileName(fileName);
 	//	ReingVisitor vis = new ReingVisitor();
 
-        AbstractOutput absOutput = (new DotOutput("graphs")).setId(id).setFileName(fileName);
-		UMLVisitor vis = new UMLVisitor();
+    //    AbstractOutput absOutput = (new DotOutput("graphs")).setId(id).setFileName(fileName);
+	//	UMLVisitor vis = new UMLVisitor();
+
+	    AbstractOutput absOutput = (new GraphOutput()).setId(id).setFileName(fileName);
+        GraphVisitor vis = new GraphVisitor();
 		parser.CompilationUnit().jjtAccept(vis, null);
 		vis.dumpData(absOutput);
 
@@ -104,7 +109,7 @@ public class JavaParser1_7 {
       {
          str = new DataInputStream(new FileInputStream(new File(fileName)));
          String s;
-         List<Tuple<AbstractOutput, UMLVisitor>> list = new ArrayList();
+        List<Tuple<AbstractOutput, UMLVisitor>> list = new ArrayList();
          while ((s = str.readLine()) != null)
          {
             try
@@ -115,15 +120,24 @@ public class JavaParser1_7 {
                // Dump syntax tree
                // SimpleNode n = parser.CompilationUnit();
                // n.dump(" ");
-				list.add(parseUML(parser,cnt++,s));
-
+                /*
+                Tuple<AbstractOutput, UMLVisitor> t = parseUML(parser,cnt++,s);
+                if(t!=null)
+                    list.add(t);
+                */
+                parse(parser,cnt++,s);
 			               }
             catch(TokenMgrError tme) { tme.printStackTrace(); }
 	        catch(Exception e) {e.printStackTrace(); }
          }
+         /*
          for(Tuple<AbstractOutput, UMLVisitor> t:list){
+            if(t.out==null)
+                System.out.println(t.uml);
+            if(t.uml==null)
+                System.out.println(t.out);
             t.uml.dumpData(t.out);
-         }
+         }*/
       }
       catch(Exception e) { e.printStackTrace(); }
       finally { if (str != null) try { str.close(); } catch(Exception e) {}  }
