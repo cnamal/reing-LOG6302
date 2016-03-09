@@ -5,3 +5,7 @@ examples/NestedClasses.java
 examples/ClassInMethod.java
 examples/Interface.java
 examples/Access.java
+examples/TP3.java
+examples/BubbleSort.java
+examples/If.java
+examples/Do.java
