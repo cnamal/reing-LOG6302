@@ -1,13 +1,11 @@
 package com.namal.reing.visitors;
 
 import com.namal.reing.*;
-import com.namal.reing.models.MMethod;
 import com.namal.reing.models.MNode;
+import com.namal.reing.models.MVariable;
 import com.namal.reing.output.AbstractOutput;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * Created by namalgac on 2/25/16.
@@ -23,6 +21,9 @@ public class GraphVisitor extends AbstractVisitor {
     private int nestedCond = 0;
     private boolean nested = false;
     private int ifNb=0;
+    private int id=0;
+
+    private Map<String,MVariable> variables;
 
     private void updateNested(){
         nested = nestedCond>0|nestedLoops;
@@ -30,13 +31,18 @@ public class GraphVisitor extends AbstractVisitor {
 
     private Object methodOrConstr(Node node, Object data, String name){
         //System.err.println(name);
-        MNode currGraph = currNode = new MNode("Entry " + name);
+        id=0;
+        variables = new HashMap<>();
+        MNode currGraph = currNode = new MNode("Entry " + name,id++);
+        currGraph.initOut();
         endMethod = new MNode("End " + name);
+        currGraph.setEndNode(endMethod);
         propagate(node,data);
         if(currNode!=null)
             currNode.addNode(endMethod);
         graphs.add(currGraph);
         currNode=null;
+        endMethod.setLabelId(id);
         return data;
     }
 
@@ -89,9 +95,9 @@ public class GraphVisitor extends AbstractVisitor {
     private MNode[] initLoop(String beg,String end){
         nestedLoops = true;
         updateNested();
-        MNode begin = new MNode(beg);
+        MNode begin = new MNode(beg,id++,currNode,false);
         beginNode.push(begin);
-        MNode cond = new MNode("Condition");
+        MNode cond = new MNode("Condition",id++,begin,false);
         MNode en = new MNode(end);
         cond.addNode(en);
         begin.addNode(cond);
@@ -108,6 +114,7 @@ public class GraphVisitor extends AbstractVisitor {
                 currNode.addNode(init[0]);
         }
         currNode=endNode.pop();
+        currNode.setLabelId(id++);
         beginNode.pop();
         if(endNode.isEmpty()) {
             nestedLoops = false;
@@ -133,7 +140,7 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(BreakStatement node, Object data){
-        MNode breakNode = new MNode("BreakStmt");
+        MNode breakNode = new MNode("BreakStmt",id++);
         currNode.addNode(breakNode);
         breakNode.addNode(endNode.peek());
         if(!nested)
@@ -143,7 +150,7 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(ReturnStatement node, Object data){
-        MNode returnStmt = new MNode("ReturnStmt");
+        MNode returnStmt = new MNode("ReturnStmt",id++,currNode,false);
         currNode.addNode(returnStmt);
         returnStmt.addNode(endMethod);
         if(!nested)
@@ -153,7 +160,7 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(ContinueStatement node, Object data){
-        MNode continueStmt = new MNode("ContinueStmt");
+        MNode continueStmt = new MNode("ContinueStmt",id++,currNode,false);
         currNode.addNode(continueStmt);
         continueStmt.addNode(beginNode.peek());
         if(!nested)
@@ -165,9 +172,9 @@ public class GraphVisitor extends AbstractVisitor {
     public Object visit(IfStatement node,Object data){
         nestedCond++;
         updateNested();
-        MNode ifNode = new MNode("IfBegin"+ ++ifNb);
-        MNode cond = new MNode("Condition");
-        MNode end = new MNode("IfEnd" + ifNb);
+        MNode ifNode = new MNode("IfBegin",id++,currNode,false);
+        MNode cond = new MNode("Condition",id++,ifNode,false);
+        MNode end = new MNode("IfEnd");
         ifNode.addNode(cond);
         currNode.addNode(ifNode);
         currNode = cond;
@@ -186,7 +193,7 @@ public class GraphVisitor extends AbstractVisitor {
                 currNode.addNode(end);
         }else
             cond.addNode(end);
-
+        end.setLabelId(id++);
         currNode = end;
         nestedCond--;
         updateNested();
@@ -205,7 +212,7 @@ public class GraphVisitor extends AbstractVisitor {
     public Object visit(DoStatement node,Object data){
         nestedLoops = true;
         updateNested();
-        MNode begin = new MNode("DoBegin");
+        MNode begin = new MNode("DoBegin",id++,currNode,false);
         MNode beginWhile = new MNode("DoWhileBegin");
         MNode cond = new MNode("Condition");
         MNode end = new MNode("DoEnd");
@@ -227,6 +234,10 @@ public class GraphVisitor extends AbstractVisitor {
             currNode.addNode(beginWhile);
         currNode = endNode.pop();
         beginNode.pop();
+        beginWhile.setLabelId(id++);
+        cond.setLabelId(id++);
+        endWhile.setLabelId(id++);
+        end.setLabelId(id++);
         if(endNode.isEmpty()) {
             nestedLoops = false;
             updateNested();
@@ -234,6 +245,72 @@ public class GraphVisitor extends AbstractVisitor {
         return data;
     }
 
+    public Object visit (VariableDeclarator node, Object data){
+        MVariable variable = new MVariable(((Identifier)node.jjtGetChild(0)).jjtGetFirstToken().image);
+        variables.put(variable.getName(),variable);
+        //VariableDeclaratorRest child = (VariableDeclaratorRest) node.jjtGetChild(1);
+        //if(child.jjtGetChild(child.jjtGetNumChildren()-1) instanceof VariableInitializer) {
+        MNode init = new MNode("Variable init",id++,currNode,true);
+        currNode.addNode(init);
+        currNode = init;
+        variable.addKill(currNode);
+        currNode.setGen(variable);
+        Map<MVariable,Set<String>> in = init.getIn();
+        Map<MVariable,Set<String>> out = init.getOut();
+        out.putAll(in);
+        Set<String> list = new HashSet<>();
+        list.add(currNode.getLabelId());
+        out.put(variable,list);
+        /*if(in.h(variable)){
+
+        }*/
+        //}
+        return data;
+    }
+
+    public Object visit (Expression node, Object data){
+        if(node.jjtGetNumChildren()>1) {
+            Node first = node.jjtGetChild(0);
+            Object ret = first.jjtAccept(this, data);
+            if (ret != null) {
+                String var = (String) ret;
+                MVariable variable = variables.get(var);
+                if(variable!=null){
+                    MNode assign = new MNode("Assignment",id++,currNode,true);
+                    currNode.addNode(assign);
+                    currNode = assign;
+                    variable.addKill(currNode);
+                    currNode.setGen(variable);
+                    Map<MVariable,Set<String>> in = assign.getIn();
+                    Map<MVariable,Set<String>> out = assign.getOut();
+                    if(in!=null)
+                        out.putAll(in);
+                    Set<String> list = new HashSet<>();
+                    list.add(currNode.getLabelId());
+                    out.put(variable,list);
+                }
+            }
+        }
+        return data;
+    }
+
+    public Object visit (Expression1 node, Object data){
+        return node.jjtGetChild(0).jjtAccept(this,data);
+    }
+
+    public Object visit (Expression2 node, Object data){
+        return node.jjtGetChild(0).jjtAccept(this,data);
+    }
+
+    public Object visit (Expression3 node, Object data){
+        return node.jjtGetChild(0).jjtAccept(this,data);
+    }
+    public Object visit (Primary node,Object data){
+        Node first = node.jjtGetChild(0);
+        if(first instanceof Identifier)
+            return ((Identifier) first).jjtGetFirstToken().image;
+        return null;
+    }
     public Object visit (Creator node,Object data){
         return data;
     }
@@ -253,5 +330,32 @@ public class GraphVisitor extends AbstractVisitor {
         absOutput.setGraphs(graphs);
         ip=absOutput.getPrinter();
         absOutput.dumpData();
+    }
+
+    public void dom(){
+        boolean pred = false;
+        for(MNode graph : graphs){
+            HashSet<MNode> visited = new HashSet<>();
+            graph.reverseCFG(visited);
+            graph.getDFSTree(pred);
+            do {
+                visited = new HashSet<>();
+            }while(graph.makeDomTree(visited,pred));
+        }
+    }
+
+    public void inOut(){
+        for(MNode graph:graphs){
+            HashSet<MNode> visited = new HashSet<>();
+            graph.reverseCFG(visited);
+            int i=0;
+            do {
+                i++;
+                //System.out.println();
+                visited = new HashSet<>();
+                //System.out.println();
+            }while(graph.makeInOut(visited));
+            //System.out.println();
+        }
     }
 }

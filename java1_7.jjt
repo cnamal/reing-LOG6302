@@ -83,6 +83,8 @@ public class JavaParser1_7 {
 	    AbstractOutput absOutput = (new GraphOutput()).setId(id).setFileName(fileName);
         GraphVisitor vis = new GraphVisitor();
 		parser.CompilationUnit().jjtAccept(vis, null);
+		//vis.dom();
+		vis.inOut();
 		vis.dumpData(absOutput);
 
 		}catch(ParseException e) { e.printStackTrace(); }
