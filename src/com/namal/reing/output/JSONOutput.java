@@ -67,9 +67,11 @@ public class JSONOutput extends AbstractOutput implements IPrint {
         indentLevel++;
         print("\"methodName\": \""+m.getName()+"\",",s);
         print("\"returnType\": \""+((m.getRet()!=null)?m.getRet().getFullName():"")+"\",",s);
-        print("\"modifiers\": [",s);
-        print(m.getMod().getList(),s);
-        print("],",s);
+        if(m.getMod()!=null) {
+            print("\"modifiers\": [", s);
+            print(m.getMod().getList(), s);
+            print("],", s);
+        }
         print("\"params\": [",s);
         print(m.getParams(),s);
         print("],",s);

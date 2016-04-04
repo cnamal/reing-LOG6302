@@ -1,6 +1,8 @@
 package com.namal.reing.output;
 
 import com.namal.reing.models.*;
+import com.namal.reing.utils.Configuration;
+import com.namal.reing.utils.EConfiguration;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -23,27 +25,22 @@ public class GraphOutput extends AbstractOutput implements IPrint {
         return res;
     }
 
-    private String printIn(Map<MVariable,Set<String>> in, MVariable gen){
+    private String printIn(Map<MVariable,Set<MNode>> in, MVariable gen){
         String res ="";
-        if(in==null)
-            return res;
-        Set<String> list = in.get(gen);
+        Set<MNode> list = in.get(gen);
         if(list!=null)
-            for(String label:list)
-                res+=label+ " ";
+            for(MNode label:list)
+                res+=label.getLabelId()+ " ";
         return res;
     }
 
-    private String printOut(Map<MVariable,Set<String>> out){
+    private String printOut(Map<MVariable,Set<MNode>> out){
         String res="";
-        //FIXME this shouldn't be necessary
-        if(out==null)
-            return res;
-        for (Map.Entry<MVariable, Set<String>> entry : out.entrySet()) {
+        for (Map.Entry<MVariable, Set<MNode>> entry : out.entrySet()) {
             res+=entry.getKey().getName()+ "-";
-            Set<String> list=entry.getValue();
-            for(String label:list)
-                res+= label +" ";
+            Set<MNode> list=entry.getValue();
+            for(MNode label:list)
+                res+= label.getLabelId() +" ";
         }
         return res;
     }
@@ -51,30 +48,61 @@ public class GraphOutput extends AbstractOutput implements IPrint {
         if(!set.contains(node.getId())) {
             set.add(node.getId());
             writer.print("\"" + node.getId() + "\"" + "[ label = \"" + node.getLabelId()+ " "+node.getLabel());
-            //System.out.println(node.getLabel() + " "+node.getIn()+ " "+ node.getOut());
-            if(out){
+            Set<EConfiguration> configurations = Configuration.getTP5Config();
+            if(configurations.contains(EConfiguration.INOUT)){
                 writer.print(" \\n ");
-                if(node.getGen()!=null){
-                    writer.print("GEN : "+ node.getGen().getName() + " \\n ");
-                    writer.print("KILL : " + printKills(node.getGen().getKills())+" \\n ");
-                    writer.print("IN : " + printIn(node.getIn(),node.getGen())+" \\n ");
+                if(node.getGen().size()>0){
+                    for(MVariable v : node.getGen()) {
+                        writer.print("GEN : " + v.getName() + " \\n ");
+                        writer.print("KILL : " + printKills(v.getKills()) + " \\n ");
+                        writer.print("IN : " + printIn(node.getIn(), v) + " \\n ");
+                    }
                 }
                 writer.print("OUT : " + printOut(node.getOut()));
             }
             writer.println( "\"];");
-            for (MNode child : node.getChildren()) {
-                writer.println("\"" + node.getId() + "\"" + "->" + "\"" + child.getId() + "\"" + ";");
-                printGraph(child, writer);
+            if(configurations.contains(EConfiguration.DDG)||configurations.contains(EConfiguration.PDG))
+                if(node.getDataDependencies()!=null)
+                    for (MNode data : node.getDataDependencies())
+                        writer.println("\"" + node.getId() + "\"" + "->" + "\"" + data.getId() + "\"  [color=red]" + ";");
+
+
+            if(configurations.contains(EConfiguration.CFG)) {
+                for (MNode child : node.getChildren()) {
+                    writer.println("\"" + node.getId() + "\"" + "->" + "\"" + child.getId() + "\"" + ";");
+                    printGraph(child, writer);
+                }
             }
-            /*MNode parent =node.getDomTreeParent();
-            if(parent != null){
-                writer.println("\"" + parent.getId() + "\"" + "->" + "\"" + node.getId() + "\"" + ";");
+            if(configurations.contains(EConfiguration.DOM)||configurations.contains(EConfiguration.PDOM)) {
+                MNode parent = node.getDomTreeParent();
+                if (parent != null) {
+                    writer.println("\"" + parent.getId() + "\"" + "->" + "\"" + node.getId() + "\"" + ";");
+                }
+                for (MNode child : node.getChildren()) {
+                    printGraph(child, writer);
+                }
             }
-            for (MNode child : node.getChildren()) {
-                printGraph(child, writer);
-            }*/
+            if(configurations.contains(EConfiguration.CDG)|| configurations.contains(EConfiguration.PDG)) {
+                List<MNode> parents = node.getCdgTreeParent();
+                if (parents != null) {
+                    for (MNode parent : parents)
+                        writer.println("\"" + parent.getId() + "\"" + "->" + "\"" + node.getId() + "\"" + ";");
+                }
+                for (MNode child : node.getChildren()) {
+                    printGraph(child, writer);
+                }
+            }
         }
     }
+
+    private String printGen(List<MVariable> gen) {
+        String res="";
+        for(MVariable g:gen){
+            res+=g + " ";
+        }
+        return res;
+    }
+
 
     @Override
     public void dumpData() {
@@ -83,9 +111,8 @@ public class GraphOutput extends AbstractOutput implements IPrint {
             File file = new File(fileName);
             writer = new PrintWriter("graphs/" +file.getName()+ ".dot", "UTF-8");
             writer.println("digraph G {");
-            for (MNode graph : nodes) {
+            for (MNode graph : nodes)
                 printGraph(graph, writer);
-            }
             writer.println("}");
             writer.close();
         } catch (Exception e) {

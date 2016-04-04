@@ -558,6 +558,10 @@ public abstract class AbstractVisitor implements JavaParser1_7Visitor
         propagate(node, data);
         return data;
     }
+    public Object visit(ForTest node, Object data){
+        propagate(node, data);
+        return data;
+    }
     public Object visit(ForUpdate node, Object data){
         propagate(node, data);
         return data;

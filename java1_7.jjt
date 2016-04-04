@@ -56,6 +56,7 @@ package com.namal.reing;
 import com.namal.reing.output.*;
 import com.namal.reing.visitors.*;
 import com.namal.reing.models.*;
+import com.namal.reing.utils.*;
 import java.io.*;
 import java.util.*;
 
@@ -72,19 +73,33 @@ public class JavaParser1_7 {
       }
     }
 
+    static Set<EConfiguration> TP1 = new HashSet();
+    static Set<EConfiguration> TP2 = new HashSet();
+    static Set<EConfiguration> CFG = new HashSet();
+    static Set<EConfiguration> DOM = new HashSet();
+    static Set<EConfiguration> PDOM = new HashSet();
+    static Set<EConfiguration> CFGINOUT = new HashSet();
+    static Set<EConfiguration> CDG = new HashSet();
+    static Set<EConfiguration> DDG = new HashSet();
+    static Set<EConfiguration> PDG = new HashSet();
+    static Set<EConfiguration> SLICE = new HashSet();
+
+
 	private static void parse(JavaParser1_7 parser,int id,String fileName){
 		try{
-	//	AbstractOutput absOutput = (new JSONOutput()).setId(id).setFileName(fileName);
-	//	ReingVisitor vis = new ReingVisitor();
-
-    //    AbstractOutput absOutput = (new DotOutput("graphs")).setId(id).setFileName(fileName);
-	//	UMLVisitor vis = new UMLVisitor();
-
-	    AbstractOutput absOutput = (new GraphOutput()).setId(id).setFileName(fileName);
-        GraphVisitor vis = new GraphVisitor();
+		AbstractOutput absOutput ;
+		AbstractVisitor vis;
+		if(Configuration.getTP()==EConfiguration.TP1){
+            absOutput=(new JSONOutput()).setId(id).setFileName(fileName);
+            vis = new ReingVisitor();
+		}else if(Configuration.getTP()==EConfiguration.TP5){
+            absOutput = (new GraphOutput()).setId(id).setFileName(fileName);
+            vis = new GraphVisitor();
+        }else{
+            System.err.println("Not valid TP");
+            return;
+        }
 		parser.CompilationUnit().jjtAccept(vis, null);
-		//vis.dom();
-		vis.inOut();
 		vis.dumpData(absOutput);
 
 		}catch(ParseException e) { e.printStackTrace(); }
@@ -111,7 +126,7 @@ public class JavaParser1_7 {
       {
          str = new DataInputStream(new FileInputStream(new File(fileName)));
          String s;
-        List<Tuple<AbstractOutput, UMLVisitor>> list = new ArrayList();
+          List<Tuple<AbstractOutput, UMLVisitor>> list = new ArrayList();
          while ((s = str.readLine()) != null)
          {
             try
@@ -122,24 +137,25 @@ public class JavaParser1_7 {
                // Dump syntax tree
                // SimpleNode n = parser.CompilationUnit();
                // n.dump(" ");
-                /*
-                Tuple<AbstractOutput, UMLVisitor> t = parseUML(parser,cnt++,s);
-                if(t!=null)
-                    list.add(t);
-                */
-                parse(parser,cnt++,s);
-			               }
+                if(Configuration.getTP()==EConfiguration.TP2){
+                    Tuple<AbstractOutput, UMLVisitor> t = parseUML(parser,cnt++,s);
+                    if(t!=null)
+                        list.add(t);
+                }else
+                    parse(parser,cnt++,s);
+			 }
             catch(TokenMgrError tme) { tme.printStackTrace(); }
 	        catch(Exception e) {e.printStackTrace(); }
          }
-         /*
-         for(Tuple<AbstractOutput, UMLVisitor> t:list){
-            if(t.out==null)
-                System.out.println(t.uml);
-            if(t.uml==null)
-                System.out.println(t.out);
-            t.uml.dumpData(t.out);
-         }*/
+         if(Configuration.getTP()==EConfiguration.TP2){
+             for(Tuple<AbstractOutput, UMLVisitor> t:list){
+                if(t.out==null)
+                    System.out.println(t.uml);
+                if(t.uml==null)
+                    System.out.println(t.out);
+                t.uml.dumpData(t.out);
+             }
+         }
       }
       catch(Exception e) { e.printStackTrace(); }
       finally { if (str != null) try { str.close(); } catch(Exception e) {}  }
@@ -154,6 +170,59 @@ public class JavaParser1_7 {
       catch(Exception e) { e.printStackTrace(); }
    }
 
+
+    private static void initConfig(boolean test){
+
+        TP1.add(EConfiguration.TP1);
+        if(test)
+            TP1.add(EConfiguration.TEST);
+
+        TP2.add(EConfiguration.TP2);
+        if(test)
+            TP2.add(EConfiguration.TEST);
+
+        CFG.add(EConfiguration.CFG);
+        CFG.add(EConfiguration.TP5);
+        if(test)
+            CFG.add(EConfiguration.TEST);
+
+        DOM.add(EConfiguration.DOM);
+        DOM.add(EConfiguration.TP5);
+        if(test)
+            DOM.add(EConfiguration.TEST);
+
+        PDOM.add(EConfiguration.PDOM);
+        PDOM.add(EConfiguration.TP5);
+        if(test)
+            PDOM.add(EConfiguration.TEST);
+
+        CFGINOUT.add(EConfiguration.CFG);
+        CFGINOUT.add(EConfiguration.INOUT);
+        CFGINOUT.add(EConfiguration.TP5);
+        if(test)
+            CFGINOUT.add(EConfiguration.TEST);
+
+        CDG.add(EConfiguration.CDG);
+        CDG.add(EConfiguration.TP5);
+        if(test)
+             CDG.add(EConfiguration.TEST);
+
+        DDG.add(EConfiguration.CFG);
+        DDG.add(EConfiguration.DDG);
+        DDG.add(EConfiguration.TP5);
+        if(test)
+             DDG.add(EConfiguration.TEST);
+
+        PDG.add(EConfiguration.PDG);
+        PDG.add(EConfiguration.TP5);
+        if(test)
+             PDG.add(EConfiguration.TEST);
+
+        SLICE.add(EConfiguration.SLICE);
+        SLICE.add(EConfiguration.TP5);
+        if(test)
+             SLICE.add(EConfiguration.TEST);
+    }
 
   public static void m(String args[]) {
     JavaParser1_7 parser;
@@ -198,6 +267,14 @@ public class JavaParser1_7 {
 
    public static void main(String[] args) throws Throwable
    {
+       initConfig(true);
+       Configuration.setConfiguration(SLICE);
+       if(true){
+       AbstractOutput absOutput = (new GraphOutput()).setId(0).setFileName("wordcount");
+       GraphVisitor vis = new GraphVisitor();
+       vis.test();
+       vis.dumpData(absOutput);
+       }else{
       int cnt = 1;
       long l = System.currentTimeMillis();
       if (args.length > 0 && args[0].charAt(0) == '@')
@@ -209,6 +286,7 @@ public class JavaParser1_7 {
          JavaParser1_7.m(args);
       }
       System.out.println("Parsed " + cnt + " files in: " + (System.currentTimeMillis() - l));
+      }
    }
 
 }
@@ -1470,7 +1548,14 @@ void ForControl():
 {
 	LOOKAHEAD(ForVarControl()) ForVarControl() // Lookahead on Type because of ambiguity on variable ID and type ID
 	|
-	( [ForInit()] <SEMICOLON> [Expression()] <SEMICOLON> [ForUpdate()] )
+	( ForInit() <SEMICOLON> ForTest() <SEMICOLON> ForUpdate() )
+}
+
+void ForTest():
+{
+}
+{
+    [Expression()]
 }
 
 void ForVarControl():
@@ -1484,7 +1569,7 @@ void ForVarControlRest():
 {
 }
 {
-	( ForVariableDeclaratorsRest() <SEMICOLON> [Expression()] <SEMICOLON> [ LOOKAHEAD(2) ForUpdate() ] )
+	( ForVariableDeclaratorsRest() <SEMICOLON> ForTest() <SEMICOLON>  ForUpdate()  )
 	|
 	(<COLON>  Expression() )
 }
@@ -1507,7 +1592,7 @@ void ForUpdate():
 {
 }
 {
-	Expression() ( <COMA> Expression() )*
+	[Expression() ( <COMA> Expression() )*]
 }
 
 
@@ -1642,7 +1727,7 @@ void Expression3():
 	( PrefixOp() Expression3() )
 	//( ( Expression()|Type() ) Expression3() )
 	|
-	( Primary() ( Selector() )* (PostfixOp() )* )
+	( Primary() ( Selector() )* (PostfixOp())* )
 	//( ( Expression()|Type() ) Expression3() )
 	//|
 	//( Primary() [Expression3()] ( Selector() )* (PostfixOp() )* )

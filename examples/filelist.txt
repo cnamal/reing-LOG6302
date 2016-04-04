@@ -11,3 +11,4 @@ examples/BubbleSort.java
 examples/If.java
 examples/Do.java
 examples/Fibo.java
+examples/WordCount.java

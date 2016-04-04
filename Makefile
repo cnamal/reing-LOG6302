@@ -10,6 +10,8 @@ MODELS=$(notdir $(wildcard src/com/namal/reing/models/*.java))
 MODELS_CLASS=$(patsubst %.java,%.class,$(MODELS))
 VISITOR=$(notdir $(wildcard src/com/namal/reing/visitors/*.java))
 VISITOR_CLASS=$(patsubst %.java,%.class,$(VISITOR))
+UTILS=$(notdir $(wildcard src/com/namal/reing/utils/*.java))
+UTILS_CLASS=$(patsubst %.java,%.class,$(UTILS))
 OUPUTJ=$(notdir $(wildcard src/com/namal/reing/output/*.java))
 OUPUT_CLASS=$(patsubst %.java,%.class,$(OUPUTJ))
 OUTPUT=target/com/namal/reing
@@ -23,6 +25,7 @@ compile: clean
 	mkdir -p $(OUTPUT)
 	mkdir -p $(OUTPUT)/models
 	mkdir -p $(OUTPUT)/visitors
+	mkdir -p $(OUTPUT)/utils
 	mkdir -p $(OUTPUT)/output
 	mkdir -p graphs
 	$(JJTREE) $(GRAMMAR).jjt
@@ -37,6 +40,7 @@ compile: clean
 	
 	mv $(MODELS) $(MODELS_CLASS) $(OUTPUT)/models
 	mv $(VISITOR) $(VISITOR_CLASS) $(OUTPUT)/visitors
+	mv $(UTILS) $(UTILS_CLASS) $(OUTPUT)/utils
 	mv $(OUTPUTJ) $(OUPUT_CLASS) $(OUTPUT)/output
 	mv *.java *.class $(OUTPUT)
 
