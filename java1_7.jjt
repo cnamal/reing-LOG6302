@@ -94,7 +94,7 @@ public class JavaParser1_7 {
             vis = new ReingVisitor();
 		}else if(Configuration.getTP()==EConfiguration.TP5){
             absOutput = (new GraphOutput()).setId(id).setFileName(fileName);
-            vis = new GraphVisitor();
+            vis = new GraphVisitor(fileName);
         }else{
             System.err.println("Not valid TP");
             return;
@@ -267,11 +267,12 @@ public class JavaParser1_7 {
 
    public static void main(String[] args) throws Throwable
    {
-       initConfig(true);
+        boolean test = false;
+       initConfig(test);
        Configuration.setConfiguration(SLICE);
-       if(true){
+       if(test){
        AbstractOutput absOutput = (new GraphOutput()).setId(0).setFileName("wordcount");
-       GraphVisitor vis = new GraphVisitor();
+       GraphVisitor vis = new GraphVisitor("test/wordcount.c");
        vis.test();
        vis.dumpData(absOutput);
        }else{

@@ -24,10 +24,13 @@ public class MNode {
     private Map<MVariable,Set<MNode>> out = null;
     private Set<MVariable> data = new HashSet<>();
     private Map<String,MVariable> variables = null;
+    private int lineNumber;
 
     public String getMethodName() {
         return methodName;
     }
+
+    public int getLineNumber(){ return lineNumber;}
 
     public void setMethodName(String methodName) {
         this.methodName = methodName;
@@ -74,25 +77,21 @@ public class MNode {
         return children;
     }
 
-    public MNode(String name, int id) {
+    public MNode(String name, int id,int line) {
         label = name;
         this.labelId = id + "";
         this.id = UUID.randomUUID().toString().replaceAll("-", "");
         out = new HashMap<>();
+        lineNumber = line;
     }
 
-    public MNode(String name, int id,MNode prev,boolean inB) {
-        label = name;
-        this.labelId = id + "";
-        this.id = UUID.randomUUID().toString().replaceAll("-", "");
-        out = new HashMap<>();
-    }
 
-    public MNode(String name) {
+    public MNode(String name,int line) {
         label = name;
         this.labelId = Integer.MAX_VALUE + "";
         this.id = UUID.randomUUID().toString().replaceAll("-", "");
         out = new HashMap<>();
+        lineNumber = line;
     }
 
     public String getLabel() {
@@ -359,6 +358,8 @@ public class MNode {
                     nodes = top.out.get(var);
                 }else
                     nodes = top.in.get(var);
+                if(nodes==null)
+                    System.out.println(var.getName()+ " " +top.getLabelId()+" " + top.getLabel());
                 for(MNode node : nodes){
                     if(node.dataDependance==null)
                         node.dataDependance = new ArrayList<>();

@@ -1,5 +1,6 @@
 package com.namal.reing.output;
 
+import com.namal.reing.Node;
 import com.namal.reing.models.*;
 import com.namal.reing.utils.Configuration;
 import com.namal.reing.utils.EConfiguration;
@@ -27,6 +28,8 @@ public class GraphOutput extends AbstractOutput implements IPrint {
 
     private String printIn(Map<MVariable,Set<MNode>> in, MVariable gen){
         String res ="";
+        if(in == null)
+            return "";
         Set<MNode> list = in.get(gen);
         if(list!=null)
             for(MNode label:list)
@@ -44,6 +47,7 @@ public class GraphOutput extends AbstractOutput implements IPrint {
         }
         return res;
     }
+
     private void printGraph(MNode node,PrintWriter writer){
         if(!set.contains(node.getId())) {
             set.add(node.getId());
@@ -62,9 +66,12 @@ public class GraphOutput extends AbstractOutput implements IPrint {
             }
             writer.println( "\"];");
             if(configurations.contains(EConfiguration.DDG)||configurations.contains(EConfiguration.PDG))
-                if(node.getDataDependencies()!=null)
+                if (node.getDataDependencies() != null)
                     for (MNode data : node.getDataDependencies())
                         writer.println("\"" + node.getId() + "\"" + "->" + "\"" + data.getId() + "\"  [color=red]" + ";");
+
+
+
 
 
             if(configurations.contains(EConfiguration.CFG)) {

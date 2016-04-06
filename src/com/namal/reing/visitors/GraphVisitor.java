@@ -7,6 +7,8 @@ import com.namal.reing.output.AbstractOutput;
 import com.namal.reing.utils.Configuration;
 import com.namal.reing.utils.EConfiguration;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.*;
 
 /**
@@ -26,19 +28,24 @@ public class GraphVisitor extends AbstractVisitor {
     private int nestedExpr =0;
 
     private Map<String,MVariable> variables;
+    private String filename ;
+
+    public GraphVisitor(String name){
+        filename = name;
+    }
 
     private void updateNested(){
         nested = nestedCond>0|nestedLoops;
     }
 
-    private Object methodOrConstr(Node node, Object data, String name){
+    private Object methodOrConstr(SimpleNode node, Object data, String name){
         //System.err.println(name);
         id=0;
         variables = new HashMap<>();
-        MNode currGraph = currNode = new MNode("Entry " + name,id++);
+        MNode currGraph = currNode = new MNode("Entry " + name,id++,node.jjtGetFirstToken().beginLine);
         currGraph.initOut();
         currGraph.setMethodName(name);
-        endMethod = new MNode("End " + name);
+        endMethod = new MNode("End " + name,node.jjtGetLastToken().beginLine);
         currGraph.setEndNode(endMethod);
         propagate(node,data);
         if(currNode!=null)
@@ -96,13 +103,13 @@ public class GraphVisitor extends AbstractVisitor {
         return data;
     }
 
-    private MNode[] initLoop(String beg,String end){
+    private MNode[] initLoop(String beg,String end,int line){
         nestedLoops = true;
         updateNested();
-        MNode begin = new MNode(beg,id++,currNode,false);
+        MNode begin = new MNode(beg,id++,line);
         beginNode.push(begin);
-        MNode cond = new MNode("Condition",id++,begin,false);
-        MNode en = new MNode(end);
+        MNode cond = new MNode("Condition",id++,line);
+        MNode en = new MNode(end,line);
         cond.addNode(en);
         begin.addNode(cond);
         currNode.addNode(begin);
@@ -128,7 +135,7 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(WhileStatement node, Object data){
-        MNode[] init=initLoop("WhileBegin","WhileEnd");
+        MNode[] init=initLoop("WhileBegin","WhileEnd",node.jjtGetFirstToken().beginLine);
         nestedExpr++;
         node.jjtGetChild(0).jjtAccept(this,data);
         nestedExpr--;
@@ -177,17 +184,20 @@ public class GraphVisitor extends AbstractVisitor {
     }
     @Override
     public Object visit(ForStatement node,Object data){
-        MNode varInit = new MNode("ForInit",id++,currNode,false);
+        MNode varInit = new MNode("ForInit",id++,node.jjtGetFirstToken().beginLine);
         currNode.addNode(varInit);
         currNode = varInit;
         nestedExpr++;
         forData(0,node,data);
         nestedExpr--;
-        MNode[] init=initLoop("ForBegin","ForEnd");
+        MNode[] init=initLoop("ForBegin","ForEnd",node.jjtGetFirstToken().beginLine);
         nestedExpr++;
         forData(1,node,data);
         nestedExpr--;
         node.jjtGetChild(node.jjtGetNumChildren()-1).jjtAccept(this,data);
+        MNode update = new MNode("ForUpdate",id++,node.jjtGetFirstToken().beginLine);
+        currNode.addNode(update);
+        currNode = update;
         endLoop(init);
         return data;
     }
@@ -201,7 +211,7 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(BreakStatement node, Object data){
-        MNode breakNode = new MNode("BreakStmt",id++);
+        MNode breakNode = new MNode("BreakStmt",id++,node.jjtGetFirstToken().beginLine);
         currNode.addNode(breakNode);
         breakNode.addNode(endNode.peek());
         if(!nested)
@@ -211,17 +221,24 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(ReturnStatement node, Object data){
-        MNode returnStmt = new MNode("ReturnStmt",id++,currNode,false);
+        MNode returnStmt = new MNode("ReturnStmt",id++,node.jjtGetFirstToken().beginLine);
         currNode.addNode(returnStmt);
         returnStmt.addNode(endMethod);
-        if(!nested)
+        MNode tmp = currNode;
+        currNode = returnStmt;
+        nestedExpr++;
+        propagate(node,data);
+        nestedExpr--;
+        currNode = tmp;
+        if(!nested) {
             currNode =null;
+        }
         return data;
     }
 
     @Override
     public Object visit(ContinueStatement node, Object data){
-        MNode continueStmt = new MNode("ContinueStmt",id++,currNode,false);
+        MNode continueStmt = new MNode("ContinueStmt",id++,node.jjtGetFirstToken().beginLine);
         currNode.addNode(continueStmt);
         continueStmt.addNode(beginNode.peek());
         if(!nested)
@@ -236,6 +253,7 @@ public class GraphVisitor extends AbstractVisitor {
         MVariable var = new MVariable(((Identifier)node.jjtGetChild(0)).jjtGetFirstToken().image);
         variables.put(var.getName(),var);
         currNode.addGen(var);
+        var.addKill(currNode);
         return data;
     }
 
@@ -243,9 +261,9 @@ public class GraphVisitor extends AbstractVisitor {
     public Object visit(IfStatement node,Object data){
         nestedCond++;
         updateNested();
-        MNode ifNode = new MNode("IfBegin",id++,currNode,false);
-        MNode cond = new MNode("Condition",id++,ifNode,false);
-        MNode end = new MNode("IfEnd");
+        MNode ifNode = new MNode("IfBegin",id++,node.jjtGetFirstToken().beginLine);
+        MNode cond = new MNode("Condition",id++,node.jjtGetFirstToken().beginLine);
+        MNode end = new MNode("IfEnd",node.jjtGetFirstToken().beginLine);
         ifNode.addNode(cond);
         currNode.addNode(ifNode);
         currNode = cond;
@@ -275,7 +293,7 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(SwitchStatement node,Object data){
-        MNode[] init=initLoop("SwitchBegin","SwitchEnd");
+        MNode[] init=initLoop("SwitchBegin","SwitchEnd",node.jjtGetFirstToken().beginLine);
         propagate(node,data);
         endLoop(init);
         return data;
@@ -283,13 +301,14 @@ public class GraphVisitor extends AbstractVisitor {
 
     @Override
     public Object visit(DoStatement node,Object data){
+        //TODO might not work
         nestedLoops = true;
         updateNested();
-        MNode begin = new MNode("DoBegin",id++,currNode,false);
-        MNode beginWhile = new MNode("DoWhileBegin");
-        MNode cond = new MNode("Condition");
-        MNode end = new MNode("DoEnd");
-        MNode endWhile = new MNode("DoWhileEnd");
+        MNode begin = new MNode("DoBegin",id++);
+        MNode beginWhile = new MNode("DoWhileBegin",node.jjtGetFirstToken().beginLine);
+        MNode cond = new MNode("Condition",node.jjtGetFirstToken().beginLine);
+        MNode end = new MNode("DoEnd",node.jjtGetFirstToken().beginLine);
+        MNode endWhile = new MNode("DoWhileEnd",node.jjtGetFirstToken().beginLine);
 
         cond.addNode(begin);
         cond.addNode(endWhile);
@@ -324,7 +343,7 @@ public class GraphVisitor extends AbstractVisitor {
         if(nestedExpr==0) {
             //VariableDeclaratorRest child = (VariableDeclaratorRest) node.jjtGetChild(1);
             //if(child.jjtGetChild(child.jjtGetNumChildren()-1) instanceof VariableInitializer) {
-            MNode init = new MNode("Variable init", id++, currNode, true);
+            MNode init = new MNode("Variable init", id++,node.jjtGetFirstToken().beginLine);
             currNode.addNode(init);
             currNode = init;
 
@@ -366,7 +385,7 @@ public class GraphVisitor extends AbstractVisitor {
             }
         }*/
         if(nestedExpr++==0){
-            MNode tmp = new MNode("Expression",id++,currNode,false);
+            MNode tmp = new MNode("Expression",id++,node.jjtGetFirstToken().beginLine);
             currNode.addNode(tmp);
             currNode = tmp;
         }
@@ -376,7 +395,8 @@ public class GraphVisitor extends AbstractVisitor {
             first.jjtAccept(this, 1);
             node.jjtGetChild(1).jjtAccept(this,2);
         }else
-            node.jjtGetChild(0).jjtAccept(this,2);
+            node.jjtGetChild(0).jjtAccept(this, 2);
+
         nestedExpr--;
         return data;
     }
@@ -396,6 +416,7 @@ public class GraphVisitor extends AbstractVisitor {
         int choice = 2;
         if(data instanceof Integer)
             choice = (Integer)data;
+
         if(tmp instanceof PrefixOp){
             String prefix =((PrefixOp) tmp).jjtGetFirstToken().image;
             if(prefix.equals("++")|| prefix.equals("--"))
@@ -418,12 +439,11 @@ public class GraphVisitor extends AbstractVisitor {
         if(node.jjtGetNumChildren()>0) {
             Node first = node.jjtGetChild(0);
             if (first instanceof Identifier) {
-                //System.out.println(((Identifier) first).jjtGetFirstToken().image);
                 MVariable variable = variables.get(((Identifier) first).jjtGetFirstToken().image);
                 if(variable!=null){
                     currNode.initOut();
                     if(!(data instanceof Integer))
-                        throw new RuntimeException("Expection boolean");
+                        throw new RuntimeException("Expected integer");
                     int choice = (int)data;
                     if(choice == 3 || choice ==1) {
                         kill(variable);
@@ -437,6 +457,7 @@ public class GraphVisitor extends AbstractVisitor {
                 return ((Identifier) first).jjtGetFirstToken().image;
             }
         }
+        propagate(node,2);
         return null;
     }
 
@@ -468,6 +489,7 @@ public class GraphVisitor extends AbstractVisitor {
     }
 
     private boolean dom=false;
+    private boolean inOut = false;
 
     private boolean preDump(){
         Set<EConfiguration> configurations = Configuration.getTP5Config();
@@ -491,10 +513,13 @@ public class GraphVisitor extends AbstractVisitor {
     }
 
     private void dom(boolean pred){
+        if(dom)
+            return;
+        dom = true;
         for(int i=0; i<graphs.size();i++){
             MNode graph = graphs.get(i);
             HashSet<MNode> visited = new HashSet<>();
-            MNode start = new MNode("Entry");
+            MNode start = new MNode("Entry",-1,graph.getLineNumber());
             start.setVariables(graph.getVariables());
             start.setMethodName(graph.getMethodName());
             start.setLabelId(-1);
@@ -516,6 +541,9 @@ public class GraphVisitor extends AbstractVisitor {
     }
 
     private void inOut(){
+        if(inOut)
+            return;
+        inOut=true;
         for(MNode graph:graphs){
             graph.firstOut();
             HashSet<MNode> visited = new HashSet<>();
@@ -532,20 +560,15 @@ public class GraphVisitor extends AbstractVisitor {
     }
 
     private void cdg(){
-        if(!dom) {
-            dom(false);
-            dom=true;
-        }
+        dom(false);
         for(MNode graph:graphs){
             graph.makeCDG();
         }
     }
 
     private void ddg(){
-        if(!dom) {
-            dom(false);
-            dom= true;
-        }
+        dom(false);
+        inOut();
         for(MNode graph :graphs){
             graph.makeDDG();
         }
@@ -558,20 +581,35 @@ public class GraphVisitor extends AbstractVisitor {
     }
 
     public void test(){
-        graphs.add(makeTestGraphs());
-        graphs.add(makeTestGraphs());
+        //graphs.add(makeWordCount());
+        graphs.add(makeFibo());
     }
+
+    //String[] testFileNames = new String[]{"test/wordcount.c","examples/Fibo.java"};
+    String[] testFileNames = new String[]{"examples/Fibo.java"};
 
     private void slice(){
         pdg();
         char cont;
         Scanner sc = new Scanner(System.in);
+        System.out.println("Do you wish to slice? "+filename+" (y/Y for yes, anything else for no)");
+        cont=sc.next().charAt(0);
+        if(cont!='y'&& cont!='Y')
+            return;
+        if(graphs.size()==0)
+            return;
         do {
             MNode n ;
-            if(graphs.size()==0)
+            int answer=0;
+            if(graphs.size()==1) {
                 n = graphs.get(0);
+            }
             else{
-                int answer;
+                if(!Configuration.getTP5Config().contains(EConfiguration.TEST))
+                    executeCommand("cat "+filename);
+                else
+                    for(String name : testFileNames)
+                        executeCommand("cat "+name);
                 do {
                     System.out.println("Please choose a method ");
                     int i = 0;
@@ -582,35 +620,48 @@ public class GraphVisitor extends AbstractVisitor {
                 }while (answer<0||answer>=graphs.size());
                 n = graphs.get(answer);
             }
+            String fileName=Configuration.getTP5Config().contains(EConfiguration.TEST)?testFileNames[answer]:filename;
+            executeCommand("python slice.py -f "+fileName+" -b "+n.getLineNumber()+ " -e "+n.getEnd().getLineNumber());
             Map<String, MVariable> map = n.getVariables();
             List<String> list = new ArrayList<>(map.keySet());
-            int answer;
             do{
                 System.out.println("Please choose a variable to slice");
                 int i=0;
                 for(String var : list){
                     System.out.println(i++ + " : "+var);
                 }
-                answer = sc.nextInt();
+                try {
+                    answer = sc.nextInt();
+                }catch (Exception e) {
+                    answer = -1;
+                    sc.nextLine();
+                }
             }while (answer<0||answer>=list.size());
             MVariable var = map.get(list.get(answer));
             List<MNode> listN = new ArrayList<>(var.getUse());
             do {
-                System.out.println("Please choose a node from which to slice");
+                System.out.println("Please choose a line number from which to slice");
                 int i=0;
+                listN.sort((n1,n2)-> n1.getLineNumber()-n2.getLineNumber());
                 for (MNode c : listN) {
-                    System.out.println(i++ + " : " + c.getLabelId());
+                    System.out.println(i++ + " : " + c.getLineNumber());
                 }
                 answer = sc.nextInt();
             }while(answer<0 || answer>=listN.size());
             MNode node = listN.get(answer);
-            node.bSlice(var).forEach(mNode -> System.out.println(mNode.getLabelId() + mNode.getLabel()));
+            printSlice(node,var,fileName);
             System.out.println("Do you wish to continue? (y/Y for yes, anything else for no)");
             cont=sc.next().charAt(0);
         } while (cont=='y'||cont=='Y');
     }
 
-    private MNode makeTestGraphs(){
+    private void printSlice(MNode node,MVariable var,String filename){
+        String list="";
+        for(MNode n : node.bSlice(var))
+            list+=n.getLineNumber()+",";
+        executeCommand("python slice.py -f "+filename+ " -l "+list);
+    }
+    private MNode makeWordCount(){
         /*MNode entry = new MNode("Entry");
         entry.setLabelId(-1);*/
         MVariable inword = new MVariable("inword");
@@ -626,107 +677,108 @@ public class GraphVisitor extends AbstractVisitor {
         map.put("nc",nc);
         map.put("c",c);
 
-        MNode start = new MNode("Start");
+        MNode start = new MNode("Start",3);
+        start.setMethodName("main");
         start.setLabelId(-1);
         start.setVariables(map);
 
-        MNode stop = new MNode("Stop");
+        MNode stop = new MNode("Stop",26);
         stop.setLabelId(-1);
         start.setEndNode(stop);
 
-        MNode _1 = new MNode("");
+        MNode _1 = new MNode("",6);
         _1.setLabelId(1);
         _1.addGen(inword);
         inword.addKill(_1);
         start.addNode(_1);
 
-        MNode _2 = new MNode("");
+        MNode _2 = new MNode("",7);
         _2.setLabelId(2);
         _2.addGen(nl);
         nl.addKill(_2);
 
-        MNode _3 = new MNode("");
+        MNode _3 = new MNode("",8);
         _3.setLabelId(3);
         _3.addGen(nw);
         nw.addKill(_3);
 
-        MNode _4 = new MNode("");
+        MNode _4 = new MNode("",9);
         _4.setLabelId(4);
         _4.addGen(nc);
         nc.addKill(_4);
 
-        MNode _5 = new MNode("");
+        MNode _5 = new MNode("",10);
         _5.setLabelId(5);
         _5.addGen(c);
         c.addKill(_5);
 
-        MNode _6 = new MNode("");
+        MNode _6 = new MNode("",11);
         _6.setLabelId(6);
         _6.addData(c);
         c.addRead(_6);
 
-        MNode _7 = new MNode("");
+        MNode _7 = new MNode("",12);
         _7.setLabelId(7);
         _7.addGen(nc);
         _7.addData(nc);
         nc.addKill(_7);
         nc.addRead(_7);
 
-        MNode _8 = new MNode("");
+        MNode _8 = new MNode("",13);
         _8.setLabelId(8);
         _8.addData(c);
         c.addRead(_8);
 
-        MNode _9 = new MNode("");
+        MNode _9 = new MNode("",14);
         _9.setLabelId(9);
         _9.addData(nl);
         _9.addGen(nl);
         nl.addKill(_9);
         nl.addRead(_9);
 
-        MNode _10 = new MNode("");
+        MNode _10 = new MNode("",15);
         _10.setLabelId(10);
         _10.addData(c);
         c.addRead(_10);
 
-        MNode _11 = new MNode("");
+        MNode _11 = new MNode("",16);
         _11.setLabelId(11);
         _11.addGen(inword);
         inword.addKill(_11);
 
-        MNode _12 = new MNode("");
+        MNode _12 = new MNode("",17);
         _12.setLabelId(12);
         _12.addData(inword);
         inword.addRead(_12);
 
-        MNode _13 = new MNode("");
+        MNode _13 = new MNode("",18);
         _13.setLabelId(13);
         _13.addGen(inword);
         inword.addKill(_13);
 
-        MNode _14 = new MNode("");
+        MNode _14 = new MNode("",19);
         _14.setLabelId(14);
         _14.addData(nw);
         _14.addGen(nw);
         nw.addKill(_14);
         nw.addRead(_14);
 
-        MNode _15 = new MNode("");
+        MNode _15 = new MNode("",21);
         _15.setLabelId(15);
         _15.addGen(c);
         c.addKill(_15);
 
-        MNode _16 = new MNode("");
+        MNode _16 = new MNode("",23);
         _16.setLabelId(16);
         _16.addData(nl);
         nl.addRead(_16);
 
-        MNode _17 = new MNode("");
+        MNode _17 = new MNode("",24);
         _17.setLabelId(17);
         _17.addData(nw);
         nw.addRead(_17);
 
-        MNode _18 = new MNode("");
+        MNode _18 = new MNode("",25);
         _18.setLabelId(18);
         _18.addData(nc);
         nc.addRead(_18);
@@ -754,5 +806,219 @@ public class GraphVisitor extends AbstractVisitor {
         _17.addNode(_18);
         _18.addNode(stop);
         return start;
+    }
+
+    private MNode makeFibo(){
+        /*MNode entry = new MNode("Entry");
+        entry.setLabelId(-1);*/
+        MVariable i = new MVariable("i");
+        MVariable n = new MVariable("n");
+        MVariable a = new MVariable("a");
+        MVariable b = new MVariable("b");
+        MVariable c = new MVariable("c");
+        MVariable d = new MVariable("d");
+        MVariable t = new MVariable("t");
+
+        Map<String, MVariable> map = new HashMap<>();
+        map.put("i",i);
+        map.put("n",n);
+        map.put("a",a);
+        map.put("b",b);
+        map.put("c",c);
+        map.put("d",d);
+        map.put("t",t);
+
+        MNode start = new MNode("Start",3);
+        start.setMethodName("fib");
+        start.addGen(n);
+        n.addKill(start);
+        start.setLabelId(-1);
+        start.setVariables(map);
+
+        MNode stop = new MNode("Stop",26);
+        stop.setLabelId(-1);
+        start.setEndNode(stop);
+
+        MNode _1 = new MNode("",4);
+        _1.setLabelId(1);
+        _1.addGen(i);
+        _1.addData(n);
+        i.addKill(_1);
+        n.addRead(_1);
+        start.addNode(_1);
+
+        MNode _2 = new MNode("",5);
+        _2.setLabelId(2);
+        _2.addGen(a);
+        a.addKill(_2);
+
+        MNode _3 = new MNode("",6);
+        _3.setLabelId(3);
+        _3.addGen(b);
+        b.addKill(_3);
+
+        MNode _4 = new MNode("",7);
+        _4.setLabelId(4);
+        _4.addGen(c);
+        c.addKill(_4);
+
+        MNode _5 = new MNode("",8);
+        _5.setLabelId(5);
+        _5.addGen(d);
+        d.addKill(_5);
+
+        MNode _6 = new MNode("",9);
+        _6.setLabelId(6);
+        _6.addGen(t);
+        t.addKill(_6);
+
+        MNode _7 = new MNode("",10);
+        _7.setLabelId(7);
+        _7.addData(n);
+        n.addRead(_7);
+
+        MNode _8 = new MNode("",11);
+        _8.setLabelId(8);
+
+        MNode _9 = new MNode("",12);
+        _9.setLabelId(9);
+        _9.addData(i);
+        i.addRead(_9);
+
+        MNode _10 = new MNode("",13);
+        _10.setLabelId(10);
+        _10.addData(i);
+        i.addRead(_10);
+
+        MNode _11 = new MNode("",14);
+        _11.setLabelId(11);
+        _11.addGen(t);
+        _11.addData(d);
+        _11.addData(c);
+        t.addKill(_11);
+        c.addRead(_11);
+        d.addRead(_11);
+
+        MNode _12 = new MNode("",15);
+        _12.setLabelId(12);
+        _12.addData(c);
+        _12.addData(d);
+        _12.addGen(c);
+        c.addRead(_12);
+        c.addKill(_12);
+        d.addRead(_12);
+
+        MNode _13 = new MNode("",16);
+        _13.setLabelId(13);
+        _13.addGen(d);
+        _13.addData(t);
+        d.addKill(_13);
+        t.addRead(_13);
+
+        MNode _14 = new MNode("",17);
+        _14.setLabelId(14);
+        _14.addData(i);
+        _14.addGen(i);
+        i.addKill(_14);
+        i.addRead(_14);
+
+        MNode _15 = new MNode("",19);
+        _15.setLabelId(15);
+        _15.addGen(t);
+        _15.addData(d);
+        _15.addData(b);
+        _15.addData(a);
+        _15.addData(c);
+        t.addKill(_15);
+        a.addRead(_15);
+        b.addRead(_15);
+        c.addRead(_15);
+        d.addRead(_15);
+
+        MNode _16 = new MNode("",20);
+        _16.setLabelId(16);
+        _16.addData(d);
+        _16.addData(a);
+        _16.addGen(a);
+        _16.addData(b);
+        _16.addData(c);
+        a.addRead(_16);
+        a.addKill(_16);
+        b.addRead(_16);
+        c.addRead(_16);
+        d.addRead(_16);
+
+        MNode _17 = new MNode("",21);
+        _17.setLabelId(17);
+        _17.addData(t);
+        _17.addGen(b);
+        t.addRead(_17);
+        b.addKill(_17);
+
+        MNode _18 = new MNode("",22);
+        _18.setLabelId(18);
+        _18.addData(i);
+        _18.addGen(i);
+        i.addRead(_18);
+        i.addKill(_18);
+
+        MNode _19 = new MNode("",24);
+        _19.setLabelId(19);
+        _19.addData(a);
+        _19.addData(b);
+        a.addRead(_19);
+        b.addRead(_19);
+
+        _1.addNode(_2);
+        _2.addNode(_3);
+        _3.addNode(_4);
+        _4.addNode(_5);
+        _5.addNode(_6);
+        _6.addNode(_7);
+        _7.addNode(_8);
+        _8.addNode(stop);
+        _19.addNode(stop);
+        _7.addNode(_9);
+        _9.addNode(_19);
+        _9.addNode(_10);
+        _10.addNode(_11);
+        _11.addNode(_12);
+        _12.addNode(_13);
+        _13.addNode(_14);
+        _14.addNode(_10);
+        _10.addNode(_15);
+        _15.addNode(_16);
+        _16.addNode(_17);
+        _17.addNode(_18);
+        _18.addNode(_9);
+        return start;
+    }
+
+
+    public void executeCommand(String command){
+        StringBuffer output = new StringBuffer();
+
+        Process p;
+        try {
+            p = Runtime.getRuntime().exec(command);
+            p.waitFor();
+            BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // process procs standard output here
+                System.out.println(line);
+            }
+            BufferedReader stderrReader = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+            while ((line = stderrReader.readLine()) != null) {
+                // process procs standard error here
+                System.err.println(" .. stderr: "+line);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        System.out.println(output.toString());
     }
 }
