@@ -359,7 +359,7 @@ public class MNode {
                 }else
                     nodes = top.in.get(var);
                 if(nodes==null)
-                    System.out.println(var.getName()+ " " +top.getLabelId()+" " + top.getLabel());
+                    continue;
                 for(MNode node : nodes){
                     if(node.dataDependance==null)
                         node.dataDependance = new ArrayList<>();

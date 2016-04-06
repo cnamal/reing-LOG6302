@@ -144,43 +144,48 @@ public class GraphVisitor extends AbstractVisitor {
         return data;
     }
 
-    private void forData(int i,ForStatement node,Object data){
-        Node n=node.jjtGetChild(0);
-        if(i==0){
-            n=n.jjtGetChild(0);
-            if(n instanceof ForInit)
-                n.jjtAccept(this,data);
-            else if(n instanceof ForVarControl){
-                Node tmp = n.jjtGetChild(n.jjtGetNumChildren()-2);
-                tmp.jjtAccept(this,data);
-                tmp = n.jjtGetChild(n.jjtGetNumChildren()-1).jjtGetChild(0);
-                tmp.jjtAccept(this,data);
-            }else
-                System.err.println("forData "+ i + " n instance of "+ n);
-        }else if(i==1){
-            if(n.jjtGetNumChildren()>1){
-                n = n.jjtGetChild(1);
-            }else{
+    private boolean forData(int i,ForStatement node,Object data){
+        try {
+            Node n = node.jjtGetChild(0);
+            if (i == 0) {
                 n = n.jjtGetChild(0);
-                n= n.jjtGetChild(n.jjtGetNumChildren()-1);
-                n=n.jjtGetChild(1);
-            }
-            if(!(n instanceof ForTest)){
-                System.err.println("forData expecting ForTest");
-            }
-            n.jjtAccept(this,data);
-        }else if(i==2){
-            if(n.jjtGetNumChildren()>1){
-                n = n.jjtGetChild(2);
-            }else{
-                n = n.jjtGetChild(0).jjtGetChild(n.jjtGetNumChildren()-1).jjtGetChild(2);
-            }
-            if(!(n instanceof ForTest)){
-                System.err.println("forData expecting ForTest");
-            }
-            n.jjtAccept(this,data);
-        }else
-            System.err.println("forData with "+i);
+                if (n instanceof ForInit)
+                    n.jjtAccept(this, data);
+                else if (n instanceof ForVarControl) {
+                    Node tmp = n.jjtGetChild(n.jjtGetNumChildren() - 2);
+                    tmp.jjtAccept(this, data);
+                    tmp = n.jjtGetChild(n.jjtGetNumChildren() - 1).jjtGetChild(0);
+                    tmp.jjtAccept(this, data);
+                } else
+                    System.err.println("forData " + i + " n instance of " + n);
+            } else if (i == 1) {
+                if (n.jjtGetNumChildren() > 1) {
+                    n = n.jjtGetChild(1);
+                } else {
+                    n = n.jjtGetChild(0);
+                    n = n.jjtGetChild(n.jjtGetNumChildren() - 1);
+                    n = n.jjtGetChild(1);
+                }
+                if (!(n instanceof ForTest)) {
+                    System.err.println("forData expecting ForTest");
+                }
+                n.jjtAccept(this, data);
+            } else if (i == 2) {
+                if (n.jjtGetNumChildren() > 1) {
+                    n = n.jjtGetChild(2);
+                } else {
+                    n = n.jjtGetChild(0).jjtGetChild(n.jjtGetNumChildren() - 1).jjtGetChild(2);
+                }
+                if (!(n instanceof ForUpdate)) {
+                    System.err.println("forData expecting ForUpdate");
+                }
+                n.jjtAccept(this, data);
+            } else
+                System.err.println("forData with " + i);
+            return true;
+        }catch (Exception ignored){
+        }
+        return false;
     }
     @Override
     public Object visit(ForStatement node,Object data){
@@ -198,6 +203,9 @@ public class GraphVisitor extends AbstractVisitor {
         MNode update = new MNode("ForUpdate",id++,node.jjtGetFirstToken().beginLine);
         currNode.addNode(update);
         currNode = update;
+        nestedExpr++;
+        forData(2,node,data);
+        nestedExpr--;
         endLoop(init);
         return data;
     }
@@ -581,12 +589,13 @@ public class GraphVisitor extends AbstractVisitor {
     }
 
     public void test(){
-        //graphs.add(makeWordCount());
-        graphs.add(makeFibo());
+        graphs.add(makeWordCount());
+        //graphs.add(makeFibo());
     }
 
     //String[] testFileNames = new String[]{"test/wordcount.c","examples/Fibo.java"};
-    String[] testFileNames = new String[]{"examples/Fibo.java"};
+    //String[] testFileNames = new String[]{"examples/Fibo.java"};
+    String[] testFileNames = new String[]{"test/wordcount.c"};
 
     private void slice(){
         pdg();
@@ -616,7 +625,12 @@ public class GraphVisitor extends AbstractVisitor {
                     for (MNode node : graphs) {
                         System.out.println(i++ + " : " + node.getMethodName());
                     }
-                    answer=sc.nextInt();
+                    try{
+                        answer=sc.nextInt();
+                    }catch(Exception e){
+                        answer = -1;
+                        sc.nextLine();
+                    }
                 }while (answer<0||answer>=graphs.size());
                 n = graphs.get(answer);
             }
@@ -646,7 +660,12 @@ public class GraphVisitor extends AbstractVisitor {
                 for (MNode c : listN) {
                     System.out.println(i++ + " : " + c.getLineNumber());
                 }
-                answer = sc.nextInt();
+                try{
+                    answer = sc.nextInt();
+                }catch (Exception e){
+                    answer = -1;
+                    sc.nextLine();
+                }
             }while(answer<0 || answer>=listN.size());
             MNode node = listN.get(answer);
             printSlice(node,var,fileName);
