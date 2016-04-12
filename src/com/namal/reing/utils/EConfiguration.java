@@ -16,4 +16,5 @@ public enum  EConfiguration {
     PDG,
     SLICE,
     TEST,
+    SLICEALL
 }

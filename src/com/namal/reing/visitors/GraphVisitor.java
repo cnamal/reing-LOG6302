@@ -513,7 +513,7 @@ public class GraphVisitor extends AbstractVisitor {
             ddg();
         else if(configurations.contains(EConfiguration.PDG))
             pdg();
-        else if(configurations.contains(EConfiguration.SLICE)) {
+        else if(configurations.contains(EConfiguration.SLICE)||configurations.contains(EConfiguration.SLICEALL)) {
             slice();
             return false;
         }
@@ -597,81 +597,107 @@ public class GraphVisitor extends AbstractVisitor {
     //String[] testFileNames = new String[]{"examples/Fibo.java"};
     String[] testFileNames = new String[]{"test/wordcount.c"};
 
+    private List<MNode> slicableGraphs(){
+        List<MNode> res = new ArrayList<>();
+        for(MNode graph:graphs){
+            if(graph.getVariables().size()>0)
+                res.add(graph);
+        }
+        return res;
+    }
     private void slice(){
         pdg();
         char cont;
-        Scanner sc = new Scanner(System.in);
-        System.out.println("Do you wish to slice? "+filename+" (y/Y for yes, anything else for no)");
-        cont=sc.next().charAt(0);
-        if(cont!='y'&& cont!='Y')
-            return;
+        List<MNode> graphs = slicableGraphs();
         if(graphs.size()==0)
             return;
-        do {
-            MNode n ;
-            int answer=0;
-            if(graphs.size()==1) {
-                n = graphs.get(0);
+
+        if(Configuration.getTP5Config().contains(EConfiguration.SLICEALL)){
+            int i=0;
+            for(MNode graph : graphs){
+                String fileName = Configuration.getTP5Config().contains(EConfiguration.TEST) ? testFileNames[i] : filename;
+                System.out.println("Slice for "+fileName);
+                for(MVariable variable: graph.getVariables().values()){
+                    System.out.println("Slicing "+ variable.getName());
+                    List<MNode> listN = new ArrayList<>(variable.getUse());
+                    listN.sort((n1, n2) -> n1.getLineNumber() - n2.getLineNumber());
+                    MNode last = listN.get(listN.size()-1);
+                    printSlice(last, variable, fileName);
+                }
+                i++;
             }
-            else{
-                if(!Configuration.getTP5Config().contains(EConfiguration.TEST))
-                    executeCommand("cat "+filename);
-                else
-                    for(String name : testFileNames)
-                        executeCommand("cat "+name);
+        }else {
+            Scanner sc = new Scanner(System.in);
+            System.out.println("Do you wish to slice? " + filename + " (y/Y for yes, anything else for no)");
+            cont = sc.next().charAt(0);
+            if (cont != 'y' && cont != 'Y')
+                return;
+
+            do {
+                MNode n;
+                int answer = 0;
+                if (graphs.size() == 1) {
+                    n = graphs.get(0);
+                } else {
+                    if (!Configuration.getTP5Config().contains(EConfiguration.TEST))
+                        executeCommand("cat " + filename);
+                    else
+                        for (String name : testFileNames)
+                            executeCommand("cat " + name);
+                    do {
+                        System.out.println("Please choose a method ");
+                        int i = 0;
+                        for (MNode node : graphs) {
+                            System.out.println(i++ + " : " + node.getMethodName());
+                        }
+                        try {
+                            answer = sc.nextInt();
+                        } catch (Exception e) {
+                            answer = -1;
+                            sc.nextLine();
+                        }
+                    } while (answer < 0 || answer >= graphs.size());
+                    n = graphs.get(answer);
+                }
+                String fileName = Configuration.getTP5Config().contains(EConfiguration.TEST) ? testFileNames[answer] : filename;
+                executeCommand("python slice.py -f " + fileName + " -b " + n.getLineNumber() + " -e " + n.getEnd().getLineNumber());
+                Map<String, MVariable> map = n.getVariables();
+                List<String> list = new ArrayList<>(map.keySet());
                 do {
-                    System.out.println("Please choose a method ");
+                    System.out.println("Please choose a variable to slice");
                     int i = 0;
-                    for (MNode node : graphs) {
-                        System.out.println(i++ + " : " + node.getMethodName());
+                    for (String var : list) {
+                        System.out.println(i++ + " : " + var);
                     }
-                    try{
-                        answer=sc.nextInt();
-                    }catch(Exception e){
+                    try {
+                        answer = sc.nextInt();
+                    } catch (Exception e) {
                         answer = -1;
                         sc.nextLine();
                     }
-                }while (answer<0||answer>=graphs.size());
-                n = graphs.get(answer);
-            }
-            String fileName=Configuration.getTP5Config().contains(EConfiguration.TEST)?testFileNames[answer]:filename;
-            executeCommand("python slice.py -f "+fileName+" -b "+n.getLineNumber()+ " -e "+n.getEnd().getLineNumber());
-            Map<String, MVariable> map = n.getVariables();
-            List<String> list = new ArrayList<>(map.keySet());
-            do{
-                System.out.println("Please choose a variable to slice");
-                int i=0;
-                for(String var : list){
-                    System.out.println(i++ + " : "+var);
-                }
-                try {
-                    answer = sc.nextInt();
-                }catch (Exception e) {
-                    answer = -1;
-                    sc.nextLine();
-                }
-            }while (answer<0||answer>=list.size());
-            MVariable var = map.get(list.get(answer));
-            List<MNode> listN = new ArrayList<>(var.getUse());
-            do {
-                System.out.println("Please choose a line number from which to slice");
-                int i=0;
-                listN.sort((n1,n2)-> n1.getLineNumber()-n2.getLineNumber());
-                for (MNode c : listN) {
-                    System.out.println(i++ + " : " + c.getLineNumber());
-                }
-                try{
-                    answer = sc.nextInt();
-                }catch (Exception e){
-                    answer = -1;
-                    sc.nextLine();
-                }
-            }while(answer<0 || answer>=listN.size());
-            MNode node = listN.get(answer);
-            printSlice(node,var,fileName);
-            System.out.println("Do you wish to continue? (y/Y for yes, anything else for no)");
-            cont=sc.next().charAt(0);
-        } while (cont=='y'||cont=='Y');
+                } while (answer < 0 || answer >= list.size());
+                MVariable var = map.get(list.get(answer));
+                List<MNode> listN = new ArrayList<>(var.getUse());
+                do {
+                    System.out.println("Please choose a line number from which to slice");
+                    int i = 0;
+                    listN.sort((n1, n2) -> n1.getLineNumber() - n2.getLineNumber());
+                    for (MNode c : listN) {
+                        System.out.println(i++ + " : " + c.getLineNumber());
+                    }
+                    try {
+                        answer = sc.nextInt();
+                    } catch (Exception e) {
+                        answer = -1;
+                        sc.nextLine();
+                    }
+                } while (answer < 0 || answer >= listN.size());
+                MNode node = listN.get(answer);
+                printSlice(node, var, fileName);
+                System.out.println("Do you wish to continue? (y/Y for yes, anything else for no)");
+                cont = sc.next().charAt(0);
+            } while (cont == 'y' || cont == 'Y');
+        }
     }
 
     private void printSlice(MNode node,MVariable var,String filename){

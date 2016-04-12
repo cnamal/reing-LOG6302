@@ -45,7 +45,8 @@ public class Configuration {
             configurations.add(EConfiguration.SLICE);
         if (map.get(EConfiguration.TEST))
             configurations.add(EConfiguration.TEST);
-
+        if (map.get(EConfiguration.SLICEALL))
+            configurations.add(EConfiguration.SLICEALL);
         return configurations;
     }
 }
