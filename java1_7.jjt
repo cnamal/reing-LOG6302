@@ -83,6 +83,7 @@ public class JavaParser1_7 {
     static Set<EConfiguration> DDG = new HashSet();
     static Set<EConfiguration> PDG = new HashSet();
     static Set<EConfiguration> SLICE = new HashSet();
+    static Set<EConfiguration> SLICEALL = new HashSet();
 
 
 	private static void parse(JavaParser1_7 parser,int id,String fileName){
@@ -222,6 +223,11 @@ public class JavaParser1_7 {
         SLICE.add(EConfiguration.TP5);
         if(test)
              SLICE.add(EConfiguration.TEST);
+
+        SLICEALL.add(EConfiguration.SLICEALL);
+        SLICEALL.add(EConfiguration.TP5);
+        if(test)
+             SLICEALL.add(EConfiguration.TEST);
     }
 
   public static void m(String args[]) {
@@ -269,7 +275,7 @@ public class JavaParser1_7 {
    {
         boolean test = false;
        initConfig(test);
-       Configuration.setConfiguration(SLICE);
+       Configuration.setConfiguration(SLICEALL);
        if(test){
        AbstractOutput absOutput = (new GraphOutput()).setId(0).setFileName("wordcount");
        GraphVisitor vis = new GraphVisitor("test/wordcount.c");

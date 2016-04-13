@@ -50,6 +50,9 @@ test: compile
 project: compile
 	java -cp target com.namal.reing.JavaParser1_7 @projects/zest-java.txt
 
+wordcount: compile
+	java -cp target com.namal.reing.JavaParser1_7 examples/WordCount.java
+
 clean:
 	rm -rf com *.java *.class graphs/
 

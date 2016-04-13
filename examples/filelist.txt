@@ -11,5 +11,6 @@ examples/TP4.java
 examples/BubbleSort.java
 examples/If.java
 examples/Do.java
+examples/Random.java
 examples/Fibo.java
 examples/WordCount.java
